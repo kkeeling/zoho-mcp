@@ -20,8 +20,10 @@ from .contacts import list_contacts, create_customer, create_vendor, get_contact
 # Import invoice management tools
 from .invoices import list_invoices, create_invoice, get_invoice, email_invoice, mark_invoice_as_sent, void_invoice
 
+# Import expense management tools
+from .expenses import list_expenses, create_expense, get_expense, update_expense
+
 # These imports will be uncommented as each tool module is implemented
-# from .expenses import list_expenses, create_expense
 # from .items import list_items, create_item, get_item
 # from .sales import create_sales_order, update_sales_order
 
@@ -41,8 +43,10 @@ __all__ = [
     # Invoice management tools
     "list_invoices", "create_invoice", "get_invoice", "email_invoice", "mark_invoice_as_sent", "void_invoice",
     
+    # Expense management tools
+    "list_expenses", "create_expense", "get_expense", "update_expense",
+    
     # These will be uncommented as each tool is implemented
-    # "list_expenses", "create_expense",
     # "list_items", "create_item", "get_item",
     # "create_sales_order", "update_sales_order",
 ]

@@ -67,9 +67,13 @@ def main() -> None:
     mcp_server.add_tool(tools.mark_invoice_as_sent)
     mcp_server.add_tool(tools.void_invoice)
     
+    # Register expense management tools
+    mcp_server.add_tool(tools.list_expenses)
+    mcp_server.add_tool(tools.create_expense)
+    mcp_server.add_tool(tools.get_expense)
+    mcp_server.add_tool(tools.update_expense)
+    
     # These tools will be registered in future tasks
-    # mcp_server.add_tool(tools.list_expenses)
-    # mcp_server.add_tool(tools.create_expense)
     # ...
     
     # Start the appropriate transport based on command line arguments
