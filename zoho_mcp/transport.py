@@ -1,20 +1,21 @@
 """
 Transport configuration utilities for the Zoho Books MCP Integration Server.
 
-This module provides functions to configure and initialize different transport types
-(STDIO, HTTP/SSE, WebSocket) for the FastMCP server. It also includes helper functions
-for command-line argument parsing and transport-specific error handling.
+This module provides functions to configure and initialize different
+transport types (STDIO, HTTP/SSE, WebSocket) for the FastMCP server.
+It also includes helper functions for command-line argument parsing
+and transport-specific error handling.
 """
 
-import os
-import sys
 import logging
 import argparse
-from typing import Any, Dict, Optional, Tuple, Union, Callable
+from typing import Any, Dict, Optional, Tuple, Callable, TypeVar, cast
 
 from mcp.server.fastmcp import FastMCP
 
 from zoho_mcp.config import settings
+
+T = TypeVar('T')
 
 logger = logging.getLogger("zoho_mcp.transport")
 
@@ -39,20 +40,23 @@ def setup_stdio_transport(
 ) -> None:
     """
     Configure and start the STDIO transport for the MCP server.
-    
+
     Args:
         mcp_server: The FastMCP server instance
         **kwargs: Additional arguments (unused for STDIO)
-        
+
     Raises:
         TransportInitializationError: If the transport fails to start
     """
     try:
         logger.info("Starting MCP server in STDIO mode")
-        mcp_server.run_stdio()
+        # FastMCP interface doesn't include run_stdio in type annotations
+        # but it's implemented at runtime
+        getattr(mcp_server, "run_stdio")()
     except Exception as e:
         logger.error(f"Failed to start STDIO transport: {str(e)}")
-        raise TransportInitializationError(f"Failed to start STDIO transport: {str(e)}") from e
+        msg = f"Failed to start STDIO transport: {str(e)}"
+        raise TransportInitializationError(msg) from e
 
 
 def setup_http_transport(
@@ -64,14 +68,14 @@ def setup_http_transport(
 ) -> None:
     """
     Configure and start the HTTP/SSE transport for the MCP server.
-    
+
     Args:
         mcp_server: The FastMCP server instance
         host: The host address to bind to
         port: The port to listen on
         cors_origins: List of allowed CORS origins
         **kwargs: Additional arguments for HTTP configuration
-        
+
     Raises:
         TransportInitializationError: If the transport fails to start
     """
@@ -79,28 +83,31 @@ def setup_http_transport(
         # Default CORS configuration if not provided
         if cors_origins is None:
             cors_origins = settings.CORS_ORIGINS
-            
+
         logger.info(f"Starting MCP server in HTTP/SSE mode on {host}:{port}")
         logger.debug(f"CORS configuration: {cors_origins}")
-        
+
         http_config = {
             "host": host,
             "port": port,
             "cors_origins": cors_origins,
         }
-        
+
         # Add any additional configs provided
         for key, value in kwargs.items():
             if key not in http_config:
                 http_config[key] = value
-        
+
         # Start the HTTP/SSE transport
-        mcp_server.run_http(**http_config)
+        # FastMCP interface doesn't include run_http in type annotations
+        # but it's implemented at runtime
+        getattr(mcp_server, "run_http")(**http_config)
     except Exception as e:
-        logger.error(f"Failed to start HTTP/SSE transport on {host}:{port}: {str(e)}")
-        raise TransportInitializationError(
-            f"Failed to start HTTP/SSE transport on {host}:{port}: {str(e)}"
-        ) from e
+        error_msg = f"HTTP/SSE transport error on {host}:{port}: {str(e)}"
+        logger.error(error_msg)
+        msg = f"Failed to start HTTP/SSE transport on {host}:{port}:"
+        msg += f" {str(e)}"
+        raise TransportInitializationError(msg) from e
 
 
 def setup_websocket_transport(
@@ -111,48 +118,51 @@ def setup_websocket_transport(
 ) -> None:
     """
     Configure and start the WebSocket transport for the MCP server.
-    
+
     Args:
         mcp_server: The FastMCP server instance
         host: The host address to bind to
         port: The port to listen on
         **kwargs: Additional arguments for WebSocket configuration
-        
+
     Raises:
         TransportInitializationError: If the transport fails to start
     """
     try:
         logger.info(f"Starting MCP server in WebSocket mode on {host}:{port}")
-        
+
         ws_config = {
             "host": host,
             "port": port,
         }
-        
+
         # Add any additional configs provided
         for key, value in kwargs.items():
             if key not in ws_config:
                 ws_config[key] = value
-        
+
         # Start the WebSocket transport
-        mcp_server.run_websocket(**ws_config)
+        # FastMCP interface doesn't include run_websocket in type annotations
+        # but it's implemented at runtime
+        getattr(mcp_server, "run_websocket")(**ws_config)
     except Exception as e:
-        logger.error(f"Failed to start WebSocket transport on {host}:{port}: {str(e)}")
-        raise TransportInitializationError(
-            f"Failed to start WebSocket transport on {host}:{port}: {str(e)}"
-        ) from e
+        error_msg = f"WebSocket transport error on {host}:{port}: {str(e)}"
+        logger.error(error_msg)
+        msg = f"Failed to start WebSocket transport on {host}:{port}:"
+        msg += f" {str(e)}"
+        raise TransportInitializationError(msg) from e
 
 
-def get_transport_handler(transport_type: str) -> Callable:
+def get_transport_handler(transport_type: str) -> Callable[[FastMCP], None]:
     """
     Get the appropriate transport handler function based on the transport type.
-    
+
     Args:
         transport_type: Type of transport (stdio, http, websocket)
-        
+
     Returns:
         The transport handler function
-        
+
     Raises:
         TransportConfigurationError: If the transport type is not supported
     """
@@ -161,32 +171,40 @@ def get_transport_handler(transport_type: str) -> Callable:
         "http": setup_http_transport,
         "websocket": setup_websocket_transport,
     }
-    
+
     if transport_type not in transport_handlers:
         supported = ", ".join(transport_handlers.keys())
-        raise TransportConfigurationError(
-            f"Unsupported transport type: {transport_type}. "
-            f"Supported types are: {supported}"
-        )
-    
-    return transport_handlers[transport_type]
+        msg = f"Unsupported transport type: {transport_type}. "
+        msg += f"Supported types are: {supported}"
+        raise TransportConfigurationError(msg)
+
+    # Cast the function to the expected callable type
+    handler = cast(Callable[[FastMCP], None],
+                   transport_handlers[transport_type])
+    return handler
 
 
-def configure_transport_from_args(args: argparse.Namespace) -> Tuple[str, Dict[str, Any]]:
+def configure_transport_from_args(
+    args: argparse.Namespace
+) -> Tuple[str, Dict[str, Any]]:
     """
     Configure transport settings from command-line arguments.
-    
+
     Args:
         args: Command-line arguments namespace
-        
+
     Returns:
         A tuple containing the transport type and configuration parameters
-        
+
     Raises:
         TransportConfigurationError: If transport configuration is invalid
     """
     try:
-        if args.stdio:
+        if args.setup_oauth:
+            return "oauth", {
+                "port": args.oauth_port
+            }
+        elif args.stdio:
             return "stdio", {}
         elif args.port is not None:
             return "http", {
@@ -200,68 +218,83 @@ def configure_transport_from_args(args: argparse.Namespace) -> Tuple[str, Dict[s
                 "port": args.ws_port,
             }
         else:
-            raise TransportConfigurationError(
-                "No transport type specified. Use --stdio, --port, or --ws."
-            )
+            msg = "No transport type specified. "
+            msg += "Use --stdio, --port, --ws, or --setup-oauth."
+            raise TransportConfigurationError(msg)
     except Exception as e:
         if not isinstance(e, TransportConfigurationError):
-            raise TransportConfigurationError(f"Transport configuration error: {str(e)}") from e
+            msg = f"Transport configuration error: {str(e)}"
+            raise TransportConfigurationError(msg) from e
         raise
 
 
 def setup_argparser() -> argparse.ArgumentParser:
     """
     Create an argument parser for transport configuration.
-    
+
     Returns:
         An ArgumentParser instance with transport-related arguments
     """
-    parser = argparse.ArgumentParser(description="Zoho Books MCP Integration Server")
-    
+    description = "Zoho Books MCP Integration Server"
+    parser = argparse.ArgumentParser(description=description)
+
     # Transport mode arguments
     transport_group = parser.add_mutually_exclusive_group(required=True)
     transport_group.add_argument(
-        "--stdio", 
-        action="store_true", 
+        "--stdio",
+        action="store_true",
         help="Use STDIO transport"
     )
     transport_group.add_argument(
-        "--port", 
-        type=int, 
-        help=f"HTTP/SSE port (default: {settings.DEFAULT_PORT})"
+        "--port",
+        type=int,
+        help="HTTP/SSE port (default: {})".format(settings.DEFAULT_PORT)
     )
     transport_group.add_argument(
-        "--ws", 
-        action="store_true", 
+        "--ws",
+        action="store_true",
         help="Use WebSocket transport"
     )
-    
+    transport_group.add_argument(
+        "--setup-oauth",
+        action="store_true",
+        help="Run OAuth setup flow to obtain a refresh token"
+    )
+
     # Common options for network transports
     parser.add_argument(
-        "--host", 
-        default=settings.DEFAULT_HOST, 
-        help=f"Server host (default: {settings.DEFAULT_HOST})"
+        "--host",
+        default=settings.DEFAULT_HOST,
+        help="Server host (default: {})".format(settings.DEFAULT_HOST)
     )
     parser.add_argument(
-        "--ws-port", 
-        type=int, 
-        default=settings.DEFAULT_WS_PORT, 
-        help=f"WebSocket port (default: {settings.DEFAULT_WS_PORT})"
+        "--ws-port",
+        type=int,
+        default=settings.DEFAULT_WS_PORT,
+        help="WebSocket port (default: {})".format(settings.DEFAULT_WS_PORT)
     )
-    
+
+    # OAuth setup options
+    parser.add_argument(
+        "--oauth-port",
+        type=int,
+        default=8099,
+        help="Port to use for OAuth callback server (default: 8099)"
+    )
+
     # Security and logging options
     parser.add_argument(
-        "--log-level", 
+        "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default=settings.LOG_LEVEL,
-        help=f"Set logging level (default: {settings.LOG_LEVEL})"
+        help="Set logging level (default: {})".format(settings.LOG_LEVEL)
     )
     parser.add_argument(
-        "--disable-cors", 
+        "--disable-cors",
         action="store_true",
-        help="Disable CORS for HTTP transport (not recommended for production)"
+        help="Disable CORS for HTTP transport (not recommended)"
     )
-    
+
     return parser
 
 
@@ -270,22 +303,22 @@ def initialize_transport(
 ) -> None:
     """
     Initialize the specified transport for the MCP server.
-    
+
     Args:
         mcp_server: The FastMCP server instance
         transport_type: The type of transport to initialize
         config: Configuration parameters for the transport
-        
+
     Raises:
         TransportInitializationError: If the transport fails to initialize
     """
     handler = get_transport_handler(transport_type)
-    
+
     try:
+        # We need to pass the config as kwargs, not as a second positional arg
         handler(mcp_server, **config)
     except Exception as e:
         if not isinstance(e, TransportInitializationError):
-            raise TransportInitializationError(
-                f"Failed to initialize {transport_type} transport: {str(e)}"
-            ) from e
+            msg = f"Failed to initialize {transport_type} transport: {str(e)}"
+            raise TransportInitializationError(msg) from e
         raise

@@ -124,6 +124,16 @@ class TestTransportUtilities(unittest.TestCase):
         self.assertTrue(args.ws)
         self.assertEqual(args.ws_port, 9000)
         
+        # Test OAuth setup arguments
+        args = parser.parse_args(["--setup-oauth", "--oauth-port", "9001"])
+        self.assertTrue(args.setup_oauth)
+        self.assertEqual(args.oauth_port, 9001)
+        
+        # Test default OAuth port
+        args = parser.parse_args(["--setup-oauth"])
+        self.assertTrue(args.setup_oauth)
+        self.assertEqual(args.oauth_port, 8099)
+        
         # Test optional arguments
         args = parser.parse_args(["--stdio", "--log-level", "DEBUG"])
         self.assertEqual(args.log_level, "DEBUG")
@@ -138,27 +148,39 @@ class TestTransportConfiguration(unittest.TestCase):
     def test_configure_transport_from_args(self):
         """Test configuring transport from command-line arguments."""
         # Test STDIO transport configuration
-        args = argparse.Namespace(stdio=True, ws=False, port=None)
+        args = argparse.Namespace(stdio=True, ws=False, port=None, setup_oauth=False)
         transport_type, config = configure_transport_from_args(args)
         self.assertEqual(transport_type, "stdio")
         self.assertEqual(config, {})
         
         # Test HTTP transport configuration
-        args = argparse.Namespace(stdio=False, ws=False, port=8080, host="127.0.0.1")
+        args = argparse.Namespace(stdio=False, ws=False, port=8080, host="127.0.0.1", setup_oauth=False)
         transport_type, config = configure_transport_from_args(args)
         self.assertEqual(transport_type, "http")
         self.assertEqual(config["port"], 8080)
         self.assertEqual(config["host"], "127.0.0.1")
         
         # Test WebSocket transport configuration
-        args = argparse.Namespace(stdio=False, ws=True, port=None, host="127.0.0.1", ws_port=9000)
+        args = argparse.Namespace(stdio=False, ws=True, port=None, host="127.0.0.1", ws_port=9000, setup_oauth=False)
         transport_type, config = configure_transport_from_args(args)
         self.assertEqual(transport_type, "websocket")
         self.assertEqual(config["port"], 9000)
         self.assertEqual(config["host"], "127.0.0.1")
         
+        # Test OAuth setup configuration
+        args = argparse.Namespace(stdio=False, ws=False, port=None, setup_oauth=True, oauth_port=8099)
+        transport_type, config = configure_transport_from_args(args)
+        self.assertEqual(transport_type, "oauth")
+        self.assertEqual(config["port"], 8099)
+        
+        # Test custom OAuth port
+        args = argparse.Namespace(stdio=False, ws=False, port=None, setup_oauth=True, oauth_port=9001)
+        transport_type, config = configure_transport_from_args(args)
+        self.assertEqual(transport_type, "oauth")
+        self.assertEqual(config["port"], 9001)
+        
         # Test invalid configuration
-        args = argparse.Namespace(stdio=False, ws=False, port=None)
+        args = argparse.Namespace(stdio=False, ws=False, port=None, setup_oauth=False)
         with self.assertRaises(TransportConfigurationError):
             configure_transport_from_args(args)
     

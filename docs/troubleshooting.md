@@ -8,6 +8,10 @@ This guide covers common issues you might encounter when using the Zoho Books MC
   - [Invalid Credentials](#invalid-credentials)
   - [Token Expiration](#token-expiration)
   - [Organization Access](#organization-access)
+- [Automatic OAuth Flow Setup](#automatic-oauth-flow-setup)
+  - [Using the OAuth Setup Command](#using-the-oauth-setup-command)
+  - [Custom OAuth Callback Port](#custom-oauth-callback-port)
+  - [Troubleshooting OAuth Setup](#troubleshooting-oauth-setup)
 - [Client Connection Problems](#client-connection-problems)
   - [Claude Desktop Connection Issues](#claude-desktop-connection-issues)
   - [Cursor Connection Issues](#cursor-connection-issues)
@@ -67,9 +71,16 @@ ZohoAuthError: Authentication failed: invalid_client_secret - Client secret is i
 - Token permissions changed
 
 **Solutions:**
-1. Generate a new refresh token from the Zoho API Console
-2. Update the `ZOHO_REFRESH_TOKEN` in your `.env` file
-3. Restart the MCP server
+1. Use the automatic OAuth setup flow (recommended):
+   ```
+   python server.py --setup-oauth
+   ```
+   This will guide you through the authentication process and automatically save the refresh token.
+
+2. Or manually:
+   - Generate a new refresh token from the Zoho API Console
+   - Update the `ZOHO_REFRESH_TOKEN` in your `.env` file
+   - Restart the MCP server
 
 **Example Error:**
 ```
@@ -95,6 +106,82 @@ ZohoAuthError: Authentication failed: invalid_token - expired or revoked
 **Example Error:**
 ```
 ZohoAPIError: Organization not found or access denied: organization_id=123456789
+```
+
+## Automatic OAuth Flow Setup
+
+The Zoho Books MCP server provides an automatic OAuth flow to simplify the authentication process.
+
+### Using the OAuth Setup Command
+
+To automatically set up OAuth authentication:
+
+1. Ensure you have the following values in your `.env` file:
+   ```
+   ZOHO_CLIENT_ID="your_client_id"
+   ZOHO_CLIENT_SECRET="your_client_secret"
+   ZOHO_ORGANIZATION_ID="your_organization_id"  
+   ZOHO_REGION="US"  # Change according to your region (US, EU, IN, AU, CA, etc.)
+   ```
+
+2. Run the OAuth setup command:
+   ```
+   python server.py --setup-oauth
+   ```
+
+3. Your default web browser will open automatically to the Zoho authentication page.
+
+4. Log in to your Zoho account and grant the requested permissions.
+
+5. After successful authentication, you will be redirected to a local page confirming the successful setup.
+
+6. The refresh token will be automatically saved to your `.env` file.
+
+7. You can now start the server normally with your chosen transport mode.
+
+### Custom OAuth Callback Port
+
+By default, the OAuth callback server runs on port 8099. If this port is unavailable, you can specify a different port:
+
+```
+python server.py --setup-oauth --oauth-port 9000
+```
+
+### Troubleshooting OAuth Setup
+
+**Browser doesn't open automatically:**
+- Copy the authorization URL displayed in the terminal
+- Manually paste it into your browser
+- Complete the authentication process
+
+**Port conflict errors:**
+- If you see "Address already in use" errors, try a different port with `--oauth-port`
+- Ensure no other services are using the specified port
+
+**Authentication timeout:**
+- The default timeout is 5 minutes
+- If the process times out, run the command again and complete the steps more quickly
+
+**Authentication errors:**
+- "Invalid client" error: Verify your Client ID and Client Secret are correct
+- "Access denied" error: Make sure you're granting all requested permissions
+- "Redirect URI mismatch": Ensure the redirect URI in your Zoho Developer Console matches `http://localhost:PORT/callback`
+
+**Example Successful Flow:**
+```
+$ python server.py --setup-oauth
+
+=== Zoho Books OAuth Setup ===
+
+Authorization URL: https://accounts.zoho.com/oauth/v2/auth?scope=ZohoBooks.fullaccess.all&client_id=1000.XXXXXXXXXXXX&response_type=code&access_type=offline&redirect_uri=http://localhost:8099/callback
+
+Attempting to open your default web browser...
+Your browser should open automatically.
+
+Waiting for authentication to complete...
+
+✅ OAuth setup completed successfully!
+Refresh token has been saved to configuration.
 ```
 
 ## Client Connection Problems
@@ -300,12 +387,13 @@ ValueError: Missing required settings: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET. Pleas
    - STDIO: `python server.py --stdio`
    - HTTP: `python server.py --port 8000`
    - WebSocket: `python server.py --ws`
+   - OAuth Setup: `python server.py --setup-oauth`
 2. Check for missing dependencies with `pip install -r requirements.txt`
 3. Verify the transport-specific settings in your configuration
 
 **Example Error:**
 ```
-TransportConfigurationError: No transport type specified. Use --stdio, --port, or --ws.
+TransportConfigurationError: No transport type specified. Use --stdio, --port, --ws, or --setup-oauth.
 ```
 
 ### SSL/TLS Issues
@@ -463,9 +551,13 @@ Below is a reference of common error messages and their likely causes:
 
 | Error Message | Likely Cause | Solution |
 |---------------|--------------|----------|
-| `Authentication failed: invalid_client` | Incorrect Client ID | Check Client ID in `.env` |
-| `Authentication failed: invalid_client_secret` | Incorrect Client Secret | Check Client Secret in `.env` |
-| `Authentication failed: invalid_code` | Invalid or expired refresh token | Generate a new refresh token |
+| `Authentication failed: invalid_client` | Incorrect Client ID | Check Client ID in `.env` or use `--setup-oauth` |
+| `Authentication failed: invalid_client_secret` | Incorrect Client Secret | Check Client Secret in `.env` or use `--setup-oauth` |
+| `Authentication failed: invalid_code` | Invalid or expired refresh token | Use `--setup-oauth` to generate a new token |
+| `OAuth flow timed out` | Authentication not completed within timeout period | Run OAuth setup again and complete the process more quickly |
+| `OAuth authorization error: access_denied` | User denied permission during OAuth flow | Re-run OAuth setup and grant all requested permissions |
+| `Address already in use` during OAuth setup | Port conflict for callback server | Use `--oauth-port` to specify a different port |
+| `Missing required OAuth credentials` | Client ID or Client Secret not configured | Add these to your `.env` file before running OAuth setup |
 | `Organization not found or access denied` | Incorrect Organization ID | Verify Organization ID in Zoho Books |
 | `Permission denied: insufficient privileges` | Missing API permissions | Check user permissions or API scopes |
 | `Resource not found: contact_id=X` | Trying to access non-existent resource | Verify the resource ID exists |
