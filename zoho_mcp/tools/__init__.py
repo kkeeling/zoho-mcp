@@ -14,8 +14,10 @@ from .api import (
     ZohoRateLimitError,
 )
 
+# Import contact management tools
+from .contacts import list_contacts, create_customer, create_vendor, get_contact, delete_contact
+
 # These imports will be uncommented as each tool module is implemented
-# from .contacts import list_contacts, create_customer, create_vendor, delete_contact
 # from .invoices import list_invoices, create_invoice, get_invoice
 # from .expenses import list_expenses, create_expense
 # from .items import list_items, create_item, get_item
@@ -31,8 +33,10 @@ __all__ = [
     "ZohoRequestError",
     "ZohoRateLimitError",
     
+    # Contact management tools
+    "list_contacts", "create_customer", "create_vendor", "get_contact", "delete_contact",
+    
     # These will be uncommented as each tool is implemented
-    # "list_contacts", "create_customer", "create_vendor", "delete_contact",
     # "list_invoices", "create_invoice", "get_invoice",
     # "list_expenses", "create_expense",
     # "list_items", "create_item", "get_item",

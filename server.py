@@ -52,8 +52,18 @@ def main() -> None:
     # Initialize the FastMCP server
     mcp_server = FastMCP(name="zoho-books")
     
-    # Register all tools from the tools module
-    # These will be implemented in future tasks
+    # Register contact management tools
+    mcp_server.add_tool(tools.list_contacts)
+    mcp_server.add_tool(tools.create_customer)
+    mcp_server.add_tool(tools.create_vendor)
+    mcp_server.add_tool(tools.get_contact)
+    mcp_server.add_tool(tools.delete_contact)
+    
+    # These tools will be registered in future tasks
+    # mcp_server.add_tool(tools.list_invoices)
+    # mcp_server.add_tool(tools.create_invoice)
+    # mcp_server.add_tool(tools.get_invoice)
+    # ...
     
     # Start the appropriate transport based on command line arguments
     if args.stdio:
