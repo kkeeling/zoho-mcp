@@ -9,6 +9,7 @@ This guide covers common issues you might encounter when using the Zoho Books MC
   - [Token Expiration](#token-expiration)
   - [Organization Access](#organization-access)
 - [Automatic OAuth Flow Setup](#automatic-oauth-flow-setup)
+  - [Creating a Zoho API Application](#creating-a-zoho-api-application)
   - [Using the OAuth Setup Command](#using-the-oauth-setup-command)
   - [Custom OAuth Callback Port](#custom-oauth-callback-port)
   - [Troubleshooting OAuth Setup](#troubleshooting-oauth-setup)
@@ -111,6 +112,32 @@ ZohoAPIError: Organization not found or access denied: organization_id=123456789
 ## Automatic OAuth Flow Setup
 
 The Zoho Books MCP server provides an automatic OAuth flow to simplify the authentication process.
+
+### Creating a Zoho API Application
+
+Before using the OAuth setup, you need to create a server-side application in the Zoho API Console:
+
+1. Go to [Zoho API Console](https://api-console.zoho.com/)
+
+2. Sign in with your Zoho account credentials.
+
+3. Click **Add Client** to create a new application.
+
+4. Select **Server-based Applications** as the client type.
+
+5. Fill in the required details:
+   - **Client Name**: A name for your application (e.g., "Zoho Books MCP")
+   - **Homepage URL**: Your website URL or `http://localhost` for local development
+   - **Authorized Redirect URIs**: Add `http://localhost:8099/callback` (or your custom port)
+   - **Description**: Brief description of your application
+
+6. Click **Create**.
+
+7. After creation, you'll receive your **Client ID** and **Client Secret**. Save these values securely - you'll need them in the next step.
+
+8. Under the **Scopes** tab, add the required scopes:
+   - For full access to all Books features: `ZohoBooks.fullaccess.all`
+   - Or select specific scopes like `ZohoBooks.contacts.READ`, `ZohoBooks.invoices.CREATE`, etc.
 
 ### Using the OAuth Setup Command
 
