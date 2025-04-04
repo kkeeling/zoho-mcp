@@ -26,8 +26,8 @@ from .expenses import list_expenses, create_expense, get_expense, update_expense
 # Import item management tools
 from .items import list_items, create_item, get_item, update_item
 
-# These imports will be uncommented as each tool module is implemented
-# from .sales import create_sales_order, update_sales_order
+# Import sales order management tools
+from .sales import list_sales_orders, create_sales_order, get_sales_order, update_sales_order, convert_to_invoice
 
 __all__ = [
     # API utilities
@@ -51,6 +51,6 @@ __all__ = [
     # Item management tools
     "list_items", "create_item", "get_item", "update_item",
     
-    # These will be uncommented as each tool is implemented
-    # "create_sales_order", "update_sales_order",
+    # Sales order management tools
+    "list_sales_orders", "create_sales_order", "get_sales_order", "update_sales_order", "convert_to_invoice",
 ]

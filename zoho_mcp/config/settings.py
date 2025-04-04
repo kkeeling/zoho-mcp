@@ -78,6 +78,21 @@ class Settings:
     DEFAULT_HOST: str = os.environ.get("DEFAULT_HOST", "127.0.0.1")
     DEFAULT_WS_PORT: int = int(os.environ.get("DEFAULT_WS_PORT", "8765"))
     
+    # Transport-specific settings
+    CORS_ORIGINS: list = os.environ.get("CORS_ORIGINS", "*").split(",")
+    HTTP_KEEPALIVE: bool = os.environ.get("HTTP_KEEPALIVE", "True").lower() in ["true", "1", "yes"]
+    HTTP_READ_TIMEOUT: int = int(os.environ.get("HTTP_READ_TIMEOUT", "30"))
+    WS_PING_INTERVAL: int = int(os.environ.get("WS_PING_INTERVAL", "30"))
+    WS_PING_TIMEOUT: int = int(os.environ.get("WS_PING_TIMEOUT", "60"))
+    RATE_LIMIT_ENABLED: bool = os.environ.get("RATE_LIMIT_ENABLED", "True").lower() in ["true", "1", "yes"]
+    RATE_LIMIT_REQUESTS: int = int(os.environ.get("RATE_LIMIT_REQUESTS", "100"))
+    RATE_LIMIT_WINDOW: int = int(os.environ.get("RATE_LIMIT_WINDOW", "60"))  # in seconds
+    
+    # Security settings
+    ENABLE_SECURE_TRANSPORT: bool = os.environ.get("ENABLE_SECURE_TRANSPORT", "False").lower() in ["true", "1", "yes"]
+    SSL_CERT_PATH: str = os.environ.get("SSL_CERT_PATH", "")
+    SSL_KEY_PATH: str = os.environ.get("SSL_KEY_PATH", "")
+    
     # Timeouts and retries
     REQUEST_TIMEOUT: int = int(os.environ.get("REQUEST_TIMEOUT", "60"))
     MAX_RETRIES: int = int(os.environ.get("MAX_RETRIES", "3"))
