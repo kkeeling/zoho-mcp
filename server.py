@@ -73,6 +73,12 @@ def main() -> None:
     mcp_server.add_tool(tools.get_expense)
     mcp_server.add_tool(tools.update_expense)
     
+    # Register item management tools
+    mcp_server.add_tool(tools.list_items)
+    mcp_server.add_tool(tools.create_item)
+    mcp_server.add_tool(tools.get_item)
+    mcp_server.add_tool(tools.update_item)
+    
     # These tools will be registered in future tasks
     # ...
     

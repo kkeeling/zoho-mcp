@@ -23,8 +23,10 @@ from .invoices import list_invoices, create_invoice, get_invoice, email_invoice,
 # Import expense management tools
 from .expenses import list_expenses, create_expense, get_expense, update_expense
 
+# Import item management tools
+from .items import list_items, create_item, get_item, update_item
+
 # These imports will be uncommented as each tool module is implemented
-# from .items import list_items, create_item, get_item
 # from .sales import create_sales_order, update_sales_order
 
 __all__ = [
@@ -46,7 +48,9 @@ __all__ = [
     # Expense management tools
     "list_expenses", "create_expense", "get_expense", "update_expense",
     
+    # Item management tools
+    "list_items", "create_item", "get_item", "update_item",
+    
     # These will be uncommented as each tool is implemented
-    # "list_items", "create_item", "get_item",
     # "create_sales_order", "update_sales_order",
 ]
