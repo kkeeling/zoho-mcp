@@ -8,12 +8,22 @@ including authentication, token refresh, and error handling.
 import json
 import time
 import logging
+import uuid
 from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 import httpx
 
 from zoho_mcp.config import settings
+from zoho_mcp.errors import (
+    APIError,
+    AuthenticationError,
+    RateLimitError,
+    ResourceNotFoundError,
+    sanitize_error_message
+)
+from zoho_mcp.logging import log_api_call, set_request_context
 
 logger = logging.getLogger(__name__)
 
@@ -24,18 +34,31 @@ AUTH_BASE_URL = settings.ZOHO_AUTH_BASE_URL
 ORG_ID = settings.ZOHO_ORGANIZATION_ID
 
 
-class ZohoAPIError(Exception):
+# Legacy error classes for backward compatibility
+class ZohoAPIError(APIError):
     """Exception raised for errors in the Zoho API responses."""
     def __init__(self, status_code: int, message: str, code: Optional[str] = None):
-        self.status_code = status_code
-        self.message = message
-        self.code = code
-        super().__init__(f"Zoho API error {code or status_code}: {message}")
+        details = {"status_code": status_code}
+        if code:
+            details["code"] = code
+        super().__init__(
+            message=message, 
+            code=code or "ZOHO_API_ERROR", 
+            status_code=status_code,
+            details=details
+        )
 
 
-class ZohoAuthenticationError(ZohoAPIError):
+class ZohoAuthenticationError(AuthenticationError):
     """Exception raised for authentication errors."""
-    pass
+    def __init__(self, status_code: int, message: str, code: Optional[str] = None):
+        details = {"status_code": status_code}
+        if code:
+            details["code"] = code
+        super().__init__(
+            message=message,
+            details=details
+        )
 
 
 class ZohoRequestError(ZohoAPIError):
@@ -43,9 +66,16 @@ class ZohoRequestError(ZohoAPIError):
     pass
 
 
-class ZohoRateLimitError(ZohoAPIError):
+class ZohoRateLimitError(RateLimitError):
     """Exception raised when rate limits are exceeded."""
-    pass
+    def __init__(self, status_code: int, message: str, code: Optional[str] = None):
+        details = {"status_code": status_code}
+        if code:
+            details["code"] = code
+        super().__init__(
+            message=message,
+            details=details
+        )
 
 
 def _load_token_from_cache() -> Dict[str, Any]:
@@ -198,12 +228,36 @@ def _handle_api_error(response: httpx.Response) -> None:
         # {"code": 1000, "message": "Error message"}
         message = data.get("message", "Unknown error")
         code = data.get("code", None)
+        
+        # Add detailed error information
+        details = {"response_data": data}
     except (json.JSONDecodeError, ValueError):
         message = response.text or f"HTTP error {status_code}"
         code = None
+        details = {"response_text": sanitize_error_message(response.text or "")}
     
+    # Log the error details
+    logger.error(
+        f"Zoho API error: Status {status_code}, Code {code}, Message: {sanitize_error_message(message)}",
+        extra={"status_code": status_code, "error_code": code}
+    )
+    
+    # Raise the appropriate exception type
     if status_code == 401:
         raise ZohoAuthenticationError(status_code, message, code)
+    elif status_code == 404:
+        resource_type = "Resource"  # Default value
+        resource_id = "unknown"     # Default value
+        
+        # Try to extract resource type and ID from the URL or response data
+        if hasattr(response, 'url'):
+            url_parts = str(response.url).split('/')
+            if len(url_parts) >= 2:
+                resource_type = url_parts[-2]
+                if len(url_parts) >= 1:
+                    resource_id = url_parts[-1].split('?')[0]
+        
+        raise ResourceNotFoundError(resource_type, resource_id, details)
     elif status_code == 429:
         raise ZohoRateLimitError(status_code, message, code)
     else:
@@ -217,6 +271,7 @@ async def zoho_api_request_async(
     json_data: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
     retry_auth: bool = True,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Make an async request to the Zoho Books API.
@@ -228,6 +283,7 @@ async def zoho_api_request_async(
         json_data: JSON data for POST/PUT requests
         headers: Additional HTTP headers
         retry_auth: Whether to retry once after authentication failures
+        request_id: Unique identifier for the request (created if not provided)
         
     Returns:
         The JSON response from the API
@@ -238,72 +294,90 @@ async def zoho_api_request_async(
     if params is None:
         params = {}
     
+    # Generate or use provided request ID for tracing
+    req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
+    set_request_context(request_id=req_id)
+    
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:
         params["organization_id"] = ORG_ID
     
-    # Get access token for authentication
-    try:
-        access_token = _get_access_token()
-    except ZohoAuthenticationError as e:
-        logger.error(f"Authentication error: {str(e)}")
-        raise
-    
-    # Prepare headers
-    request_headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json",
-    }
-    
-    if headers:
-        request_headers.update(headers)
-    
-    # Prepare URL (ensure endpoint starts with /)
+    # Ensure endpoint starts with /
     if not endpoint.startswith("/"):
         endpoint = f"/{endpoint}"
     
     url = f"{API_BASE_URL}{endpoint}"
     
-    # Make the request
-    try:
-        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=request_headers,
-            )
-            
-            # Check if the request was successful
-            if response.status_code >= 400:
-                # If we get a 401 Unauthorized and retry_auth is True,
-                # refresh the token and try again
-                if response.status_code == 401 and retry_auth:
-                    logger.info("Received 401, refreshing token and retrying")
-                    _get_access_token(force_refresh=True)
-                    return await zoho_api_request_async(
-                        method, endpoint, params, json_data, headers,
-                        retry_auth=False
-                    )
-                else:
-                    _handle_api_error(response)
-            
-            # Parse JSON response
+    # Log the API call
+    with log_api_call(method, endpoint, logger, include_request_body=True) as log_context:
+        try:
+            # Get access token for authentication
             try:
-                return response.json()
-            except Exception:  # Handle any JSON parsing errors
-                # If the response is not JSON, return a dict with the text
-                if response.status_code == 204:  # No Content
-                    return {
-                        "status": "success",
-                        "message": "Operation completed successfully"
-                    }
-                return {"text": response.text}
+                access_token = _get_access_token()
+            except ZohoAuthenticationError as e:
+                logger.error(f"Authentication error: {sanitize_error_message(str(e))}")
+                raise
+            
+            # Prepare headers
+            request_headers = {
+                "Authorization": f"Zoho-oauthtoken {access_token}",
+                "Content-Type": "application/json",
+                "X-Request-ID": req_id,
+            }
+            
+            if headers:
+                request_headers.update(headers)
+            
+            # Record request details in log context
+            if json_data is not None:
+                log_context["request_body"] = json_data
+            
+            # Make the request
+            async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
+                response = await client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=request_headers,
+                )
                 
-    except (httpx.RequestError, httpx.TimeoutException) as e:
-        logger.error(f"Request error: {str(e)}")
-        raise ZohoRequestError(500, f"Request failed: {str(e)}")
+                # Record response details
+                log_context["status_code"] = response.status_code
+                
+                # Check if the request was successful
+                if response.status_code >= 400:
+                    # If we get a 401 Unauthorized and retry_auth is True,
+                    # refresh the token and try again
+                    if response.status_code == 401 and retry_auth:
+                        logger.info("Received 401, refreshing token and retrying")
+                        _get_access_token(force_refresh=True)
+                        return await zoho_api_request_async(
+                            method, endpoint, params, json_data, headers,
+                            retry_auth=False, request_id=req_id
+                        )
+                    else:
+                        _handle_api_error(response)
+                
+                # Parse JSON response
+                try:
+                    result = response.json()
+                    log_context["response_body"] = result
+                    return result
+                except Exception:  # Handle any JSON parsing errors
+                    # If the response is not JSON, return a dict with the text
+                    log_context["response_text"] = response.text
+                    if response.status_code == 204:  # No Content
+                        return {
+                            "status": "success",
+                            "message": "Operation completed successfully"
+                        }
+                    return {"text": response.text}
+                    
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            error_msg = f"Request error: {str(e)}"
+            logger.error(error_msg)
+            raise ZohoRequestError(500, error_msg)
 
 
 def zoho_api_request(
@@ -313,6 +387,7 @@ def zoho_api_request(
     json: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
     retry_auth: bool = True,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Make a synchronous request to the Zoho Books API.
@@ -324,6 +399,7 @@ def zoho_api_request(
         json: JSON data for POST/PUT requests
         headers: Additional HTTP headers
         retry_auth: Whether to retry once after authentication failures
+        request_id: Unique identifier for the request (created if not provided)
         
     Returns:
         The JSON response from the API
@@ -334,72 +410,90 @@ def zoho_api_request(
     if params is None:
         params = {}
     
+    # Generate or use provided request ID for tracing
+    req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
+    set_request_context(request_id=req_id)
+    
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:
         params["organization_id"] = ORG_ID
     
-    # Get access token for authentication
-    try:
-        access_token = _get_access_token()
-    except ZohoAuthenticationError as e:
-        logger.error(f"Authentication error: {str(e)}")
-        raise
-    
-    # Prepare headers
-    request_headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json",
-    }
-    
-    if headers:
-        request_headers.update(headers)
-    
-    # Prepare URL (ensure endpoint starts with /)
+    # Ensure endpoint starts with /
     if not endpoint.startswith("/"):
         endpoint = f"/{endpoint}"
     
     url = f"{API_BASE_URL}{endpoint}"
     
-    # Make the request
-    try:
-        with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
-            response = client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json,
-                headers=request_headers,
-            )
-            
-            # Check if the request was successful
-            if response.status_code >= 400:
-                # If we get a 401 Unauthorized and retry_auth is True,
-                # refresh the token and try again
-                if response.status_code == 401 and retry_auth:
-                    logger.info("Received 401, refreshing token and retrying")
-                    _get_access_token(force_refresh=True)
-                    return zoho_api_request(
-                        method, endpoint, params, json, headers,
-                        retry_auth=False
-                    )
-                else:
-                    _handle_api_error(response)
-            
-            # Parse JSON response
+    # Log the API call
+    with log_api_call(method, endpoint, logger, include_request_body=True) as log_context:
+        try:
+            # Get access token for authentication
             try:
-                return response.json()
-            except Exception:  # Handle any JSON parsing errors
-                # If the response is not JSON, return a dict with the text
-                if response.status_code == 204:  # No Content
-                    return {
-                        "status": "success",
-                        "message": "Operation completed successfully"
-                    }
-                return {"text": response.text}
+                access_token = _get_access_token()
+            except ZohoAuthenticationError as e:
+                logger.error(f"Authentication error: {sanitize_error_message(str(e))}")
+                raise
+            
+            # Prepare headers
+            request_headers = {
+                "Authorization": f"Zoho-oauthtoken {access_token}",
+                "Content-Type": "application/json",
+                "X-Request-ID": req_id,
+            }
+            
+            if headers:
+                request_headers.update(headers)
+            
+            # Record request details in log context
+            if json is not None:
+                log_context["request_body"] = json
+            
+            # Make the request
+            with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
+                response = client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=request_headers,
+                )
                 
-    except (httpx.RequestError, httpx.TimeoutException) as e:
-        logger.error(f"Request error: {str(e)}")
-        raise ZohoRequestError(500, f"Request failed: {str(e)}")
+                # Record response details
+                log_context["status_code"] = response.status_code
+                
+                # Check if the request was successful
+                if response.status_code >= 400:
+                    # If we get a 401 Unauthorized and retry_auth is True,
+                    # refresh the token and try again
+                    if response.status_code == 401 and retry_auth:
+                        logger.info("Received 401, refreshing token and retrying")
+                        _get_access_token(force_refresh=True)
+                        return zoho_api_request(
+                            method, endpoint, params, json, headers,
+                            retry_auth=False, request_id=req_id
+                        )
+                    else:
+                        _handle_api_error(response)
+                
+                # Parse JSON response
+                try:
+                    result = response.json()
+                    log_context["response_body"] = result
+                    return result
+                except Exception:  # Handle any JSON parsing errors
+                    # If the response is not JSON, return a dict with the text
+                    log_context["response_text"] = response.text
+                    if response.status_code == 204:  # No Content
+                        return {
+                            "status": "success",
+                            "message": "Operation completed successfully"
+                        }
+                    return {"text": response.text}
+                    
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            error_msg = f"Request error: {str(e)}"
+            logger.error(error_msg)
+            raise ZohoRequestError(500, error_msg)
 
 
 # Utility function to validate Zoho credentials
@@ -410,6 +504,7 @@ def validate_credentials() -> Tuple[bool, Optional[str]]:
     Returns:
         A tuple of (success: bool, error_message: Optional[str])
     """
+    logger.info("Validating Zoho Books API credentials")
     try:
         # Check if required settings are present
         settings.validate()
@@ -418,22 +513,41 @@ def validate_credentials() -> Tuple[bool, Optional[str]]:
         _get_access_token(force_refresh=True)
         
         # Make a simple request to test the token
-        response = zoho_api_request(
-            method="GET",
-            endpoint="/organizations",
-        )
+        with log_api_call("GET", "/organizations", logger) as log_context:
+            response = zoho_api_request(
+                method="GET",
+                endpoint="/organizations",
+                request_id="credential-validation",
+            )
+            log_context["status_code"] = 200
+            
+            # Check if our organization ID exists in the response
+            orgs = response.get("organizations", [])
+            org_ids = [org.get("organization_id") for org in orgs]
+            
+            if ORG_ID not in org_ids:
+                error_msg = f"Organization ID {ORG_ID} not found in Zoho Books account."
+                logger.error(error_msg)
+                return False, error_msg
+            
+            logger.info("Zoho Books API credentials validated successfully")
+            return True, None
         
-        # Check if our organization ID exists in the response
-        orgs = response.get("organizations", [])
-        org_ids = [org.get("organization_id") for org in orgs]
-        
-        if ORG_ID not in org_ids:
-            return False, f"Organization ID {ORG_ID} not found in Zoho Books account."
-        
-        return True, None
-        
-    except (ZohoAuthenticationError, ZohoRequestError, ValueError) as e:
-        return False, str(e)
+    except (ZohoAuthenticationError, ZohoRequestError) as e:
+        # Use sanitized error message to avoid leaking sensitive info
+        error_msg = sanitize_error_message(str(e))
+        logger.error(f"Credential validation failed: {error_msg}")
+        return False, error_msg
+    except ValueError as e:
+        # This is usually a configuration error
+        error_msg = str(e)
+        logger.error(f"Credential validation failed due to misconfiguration: {error_msg}")
+        return False, error_msg
+    except Exception as e:
+        # Catch any unexpected errors
+        error_msg = f"Unexpected error during credential validation: {sanitize_error_message(str(e))}"
+        logger.error(error_msg, exc_info=True)
+        return False, error_msg
 
 
 # Expose main functions

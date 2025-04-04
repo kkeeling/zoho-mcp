@@ -72,6 +72,13 @@ class Settings:
     LOG_FORMAT: str = os.environ.get(
         "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
+    LOG_FILE_PATH: str = os.environ.get("LOG_FILE_PATH", "")
+    LOG_FORMAT_JSON: bool = os.environ.get("LOG_FORMAT_JSON", "False").lower() in ["true", "1", "yes"]
+    LOG_MAX_BYTES: int = int(os.environ.get("LOG_MAX_BYTES", "10485760"))  # 10MB
+    LOG_BACKUP_COUNT: int = int(os.environ.get("LOG_BACKUP_COUNT", "5"))
+    LOG_SANITIZE_ENABLED: bool = os.environ.get("LOG_SANITIZE_ENABLED", "True").lower() in ["true", "1", "yes"]
+    LOG_INCLUDE_REQUEST_BODY: bool = os.environ.get("LOG_INCLUDE_REQUEST_BODY", "False").lower() in ["true", "1", "yes"]
+    LOG_INCLUDE_RESPONSE_BODY: bool = os.environ.get("LOG_INCLUDE_RESPONSE_BODY", "False").lower() in ["true", "1", "yes"]
     
     # Server settings
     DEFAULT_PORT: int = int(os.environ.get("DEFAULT_PORT", "8000"))

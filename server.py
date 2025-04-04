@@ -23,11 +23,14 @@ from zoho_mcp.transport import (
     TransportConfigurationError,
     TransportInitializationError
 )
+from zoho_mcp.errors import ZohoMCPError, handle_exception
+from zoho_mcp.logging import setup_logging, request_logging_context
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format=settings.LOG_FORMAT,
+# Initialize logging early in startup process
+setup_logging(
+    level=settings.LOG_LEVEL,
+    log_file=settings.LOG_FILE_PATH,
+    use_json=settings.LOG_FORMAT_JSON
 )
 logger = logging.getLogger("zoho_mcp")
 
@@ -113,46 +116,67 @@ def main() -> None:
     Main entry point for the Zoho Books MCP server.
     Sets up FastMCP, registers tools, and starts the appropriate transport.
     """
-    try:
-        # Parse command-line arguments
-        parser = setup_argparser()
-        args = parser.parse_args()
+    with request_logging_context(request_id="server-startup"):
+        try:
+            # Log server startup
+            logger.info("Starting Zoho Books MCP Integration Server")
+            
+            # Parse command-line arguments
+            parser = setup_argparser()
+            args = parser.parse_args()
+            
+            # Configure server settings
+            server_config = configure_server(args)
+            
+            # Initialize the FastMCP server
+            logger.info(f"Initializing FastMCP server with config: {server_config}")
+            mcp_server = FastMCP(**server_config)
+            
+            # Register all tools
+            logger.info("Registering MCP tools")
+            register_tools(mcp_server)
+            
+            # Configure and initialize the appropriate transport
+            transport_type, transport_config = configure_transport_from_args(args)
+            logger.info(f"Configured transport: {transport_type}")
+            
+            # Enable SSL if configured and not using STDIO
+            if (
+                transport_type != "stdio" and 
+                settings.ENABLE_SECURE_TRANSPORT and 
+                settings.SSL_CERT_PATH and 
+                settings.SSL_KEY_PATH
+            ):
+                logger.info("Enabling secure transport (SSL)")
+                transport_config["ssl_certfile"] = settings.SSL_CERT_PATH
+                transport_config["ssl_keyfile"] = settings.SSL_KEY_PATH
+            
+            # Start the transport
+            logger.info(f"Initializing {transport_type} transport")
+            initialize_transport(mcp_server, transport_type, transport_config)
         
-        # Configure server settings
-        server_config = configure_server(args)
-        
-        # Initialize the FastMCP server
-        mcp_server = FastMCP(**server_config)
-        
-        # Register all tools
-        register_tools(mcp_server)
-        
-        # Configure and initialize the appropriate transport
-        transport_type, transport_config = configure_transport_from_args(args)
-        
-        # Enable SSL if configured and not using STDIO
-        if (
-            transport_type != "stdio" and 
-            settings.ENABLE_SECURE_TRANSPORT and 
-            settings.SSL_CERT_PATH and 
-            settings.SSL_KEY_PATH
-        ):
-            logger.info("Enabling secure transport (SSL)")
-            transport_config["ssl_certfile"] = settings.SSL_CERT_PATH
-            transport_config["ssl_keyfile"] = settings.SSL_KEY_PATH
-        
-        # Start the transport
-        initialize_transport(mcp_server, transport_type, transport_config)
-    
-    except TransportConfigurationError as e:
-        logger.error(f"Transport configuration error: {str(e)}")
-        sys.exit(1)
-    except TransportInitializationError as e:
-        logger.error(f"Transport initialization error: {str(e)}")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        sys.exit(1)
+        except TransportConfigurationError as e:
+            logger.error(f"Transport configuration error: {str(e)}")
+            # Use handle_exception for consistent error format
+            error_details = handle_exception(e)
+            logger.debug(f"Error details: {error_details}")
+            sys.exit(1)
+        except TransportInitializationError as e:
+            logger.error(f"Transport initialization error: {str(e)}")
+            error_details = handle_exception(e)
+            logger.debug(f"Error details: {error_details}")
+            sys.exit(1)
+        except ZohoMCPError as e:
+            # For our custom errors, log with the built-in error details
+            logger.error(f"{e.__class__.__name__}: {str(e)}")
+            error_details = handle_exception(e)
+            logger.debug(f"Error details: {error_details}")
+            sys.exit(1)
+        except Exception as e:
+            # For unexpected errors, log the full traceback in debug mode
+            logger.error(f"Unexpected error: {str(e)}")
+            error_details = handle_exception(e, log_exception=True)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
