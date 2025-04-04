@@ -26,3 +26,6 @@ IMPORTANT: Install all dependencies in the `zoho-mcp` conda environment.
 - Error handling: use specific exceptions with contextual messages
 - Logging: use structured logging with appropriate log levels
 - Testing: use pytest with proper fixtures and mocking
+
+## Must-Follow Instructions
+- Always read the table of contents for the documentation at `specs/docs/toc.md` to understand what documentation exists and is relevant to the task at hand.

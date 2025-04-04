@@ -59,10 +59,17 @@ def main() -> None:
     mcp_server.add_tool(tools.get_contact)
     mcp_server.add_tool(tools.delete_contact)
     
+    # Register invoice management tools
+    mcp_server.add_tool(tools.list_invoices)
+    mcp_server.add_tool(tools.create_invoice)
+    mcp_server.add_tool(tools.get_invoice)
+    mcp_server.add_tool(tools.email_invoice)
+    mcp_server.add_tool(tools.mark_invoice_as_sent)
+    mcp_server.add_tool(tools.void_invoice)
+    
     # These tools will be registered in future tasks
-    # mcp_server.add_tool(tools.list_invoices)
-    # mcp_server.add_tool(tools.create_invoice)
-    # mcp_server.add_tool(tools.get_invoice)
+    # mcp_server.add_tool(tools.list_expenses)
+    # mcp_server.add_tool(tools.create_expense)
     # ...
     
     # Start the appropriate transport based on command line arguments
