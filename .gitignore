@@ -1,2 +1,3 @@
 specs
 *.pyc
+config/.env
