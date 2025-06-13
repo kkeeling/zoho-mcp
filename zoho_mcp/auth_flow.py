@@ -284,9 +284,10 @@ def run_oauth_flow(port: int = 8099) -> str:
         domain = settings.domain
         redirect_uri = f"http://localhost:{port}/callback"
         
+        scope = settings.ZOHO_OAUTH_SCOPE
         auth_url = (
             f"https://accounts.zoho.{domain}/oauth/v2/auth?"
-            f"scope=ZohoBooks.fullaccess.all&"
+            f"scope={scope}&"
             f"client_id={client_id}&"
             f"response_type=code&"
             f"access_type=offline&"
