@@ -60,6 +60,10 @@ class Settings:
     ZOHO_AUTH_BASE_URL: str = os.environ.get(
         "ZOHO_AUTH_BASE_URL", f"https://accounts.zoho.{domain}/oauth/v2"
     )
+    ZOHO_OAUTH_SCOPE: str = os.environ.get(
+        "ZOHO_OAUTH_SCOPE",
+        "ZohoBooks.fullaccess.all",
+    )
     
     # Token management
     TOKEN_CACHE_PATH: str = os.environ.get(
