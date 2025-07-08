@@ -1,3 +1,7 @@
 specs
 *.pyc
 config/.env
+
+# Claude-specific files
+.claude/hook-state.json
+.claude/project-memory.md
