@@ -25,3 +25,8 @@ click>=8.1.0
 
 # Async
 asyncio>=3.4.3
+anyio>=3.7.0
+
+# Web Server (for HTTP/SSE transport)
+starlette>=0.27.0
+uvicorn>=0.23.0

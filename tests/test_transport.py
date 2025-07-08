@@ -9,6 +9,15 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.stdio import stdio_server
+from mcp.server.websocket import websocket_server
+
+# These are mocked in the tests
+import anyio
+import uvicorn
+from starlette.applications import Starlette
+from starlette.routing import Mount, Route
+from mcp.server.sse import SseServerTransport
 
 from zoho_mcp.config import settings
 from zoho_mcp.transport import (
@@ -30,68 +39,70 @@ class TestTransportHandlers(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.mcp_server = MagicMock()
-        self.mcp_server.run_stdio = MagicMock()
-        self.mcp_server.run_http = MagicMock()
-        self.mcp_server.run_websocket = MagicMock()
+        self.mcp_server.run = MagicMock()
+        self.mcp_server.create_initialization_options = MagicMock(return_value={})
     
     def test_stdio_transport_handler(self):
         """Test STDIO transport handler function."""
         # Test successful initialization
         setup_stdio_transport(self.mcp_server)
-        self.mcp_server.run_stdio.assert_called_once()
+        
+        # Check if mcp_server.run was called with the correct transport
+        self.mcp_server.run.assert_called_once_with(transport="stdio")
         
         # Test initialization error
-        self.mcp_server.run_stdio.side_effect = Exception("STDIO error")
+        self.mcp_server.run.side_effect = Exception("STDIO error")
         with self.assertRaises(TransportInitializationError):
             setup_stdio_transport(self.mcp_server)
     
     def test_http_transport_handler(self):
         """Test HTTP transport handler function."""
         # Test successful initialization with default parameters
+        self.mcp_server.settings = MagicMock()
+        
         setup_http_transport(self.mcp_server)
-        self.mcp_server.run_http.assert_called_once()
+        
+        # Verify settings were updated correctly
+        self.assertEqual(self.mcp_server.settings.host, settings.DEFAULT_HOST)
+        self.assertEqual(self.mcp_server.settings.port, settings.DEFAULT_PORT)
+        
+        # Check if run was called with the right transport
+        self.mcp_server.run.assert_called_once_with(transport="sse")
         
         # Test with custom parameters
-        self.mcp_server.run_http.reset_mock()
+        self.mcp_server.run.reset_mock()
+        self.mcp_server.settings = MagicMock()
+        
         setup_http_transport(
             self.mcp_server,
             host="0.0.0.0",
             port=9000,
             cors_origins=["https://example.com"]
         )
-        self.mcp_server.run_http.assert_called_once_with(
-            host="0.0.0.0",
-            port=9000,
-            cors_origins=["https://example.com"]
-        )
+        
+        # Verify settings were updated correctly
+        self.assertEqual(self.mcp_server.settings.host, "0.0.0.0")
+        self.assertEqual(self.mcp_server.settings.port, 9000)
+        
+        # Check if run was called with the right transport
+        self.mcp_server.run.assert_called_once_with(transport="sse")
         
         # Test initialization error
-        self.mcp_server.run_http.side_effect = Exception("HTTP error")
+        self.mcp_server.run.side_effect = Exception("HTTP error")
         with self.assertRaises(TransportInitializationError):
             setup_http_transport(self.mcp_server)
     
     def test_websocket_transport_handler(self):
         """Test WebSocket transport handler function."""
-        # Test successful initialization with default parameters
-        setup_websocket_transport(self.mcp_server)
-        self.mcp_server.run_websocket.assert_called_once()
+        # Since we've updated the WebSocket transport to raise an error
+        # directly (as it's not supported in the current MCP SDK),
+        # we should test that it raises the expected error
         
-        # Test with custom parameters
-        self.mcp_server.run_websocket.reset_mock()
-        setup_websocket_transport(
-            self.mcp_server,
-            host="0.0.0.0",
-            port=9001
-        )
-        self.mcp_server.run_websocket.assert_called_once_with(
-            host="0.0.0.0",
-            port=9001
-        )
-        
-        # Test initialization error
-        self.mcp_server.run_websocket.side_effect = Exception("WebSocket error")
-        with self.assertRaises(TransportInitializationError):
+        with self.assertRaises(TransportInitializationError) as context:
             setup_websocket_transport(self.mcp_server)
+        
+        # Check the error message
+        self.assertIn("WebSocket transport is not supported", str(context.exception))
 
 
 class TestTransportUtilities(unittest.TestCase):
@@ -187,9 +198,8 @@ class TestTransportConfiguration(unittest.TestCase):
     def test_initialize_transport(self):
         """Test transport initialization."""
         mcp_server = MagicMock()
-        mcp_server.run_stdio = MagicMock()
-        mcp_server.run_http = MagicMock()
-        mcp_server.run_websocket = MagicMock()
+        mcp_server.run = MagicMock()
+        mcp_server.create_initialization_options = MagicMock(return_value={})
         
         # Test successful initialization
         with patch("zoho_mcp.transport.get_transport_handler") as mock_get_handler:

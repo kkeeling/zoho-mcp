@@ -50,9 +50,10 @@ def setup_stdio_transport(
     """
     try:
         logger.info("Starting MCP server in STDIO mode")
-        # FastMCP interface doesn't include run_stdio in type annotations
-        # but it's implemented at runtime
-        getattr(mcp_server, "run_stdio")()
+        
+        # In our version of FastMCP, we can directly call run with "stdio" transport
+        mcp_server.run(transport="stdio")
+        
     except Exception as e:
         logger.error(f"Failed to start STDIO transport: {str(e)}")
         msg = f"Failed to start STDIO transport: {str(e)}"
@@ -87,21 +88,19 @@ def setup_http_transport(
         logger.info(f"Starting MCP server in HTTP/SSE mode on {host}:{port}")
         logger.debug(f"CORS configuration: {cors_origins}")
 
-        http_config = {
-            "host": host,
-            "port": port,
-            "cors_origins": cors_origins,
-        }
-
-        # Add any additional configs provided
+        # Configure settings for the SSE transport
+        # These settings will be used by the FastMCP internally
+        mcp_server.settings.host = host
+        mcp_server.settings.port = port
+        
+        # Process any other keyword arguments
         for key, value in kwargs.items():
-            if key not in http_config:
-                http_config[key] = value
-
-        # Start the HTTP/SSE transport
-        # FastMCP interface doesn't include run_http in type annotations
-        # but it's implemented at runtime
-        getattr(mcp_server, "run_http")(**http_config)
+            if hasattr(mcp_server.settings, key):
+                setattr(mcp_server.settings, key, value)
+        
+        # Run the server with SSE transport
+        mcp_server.run(transport="sse")
+        
     except Exception as e:
         error_msg = f"HTTP/SSE transport error on {host}:{port}: {str(e)}"
         logger.error(error_msg)
@@ -128,29 +127,16 @@ def setup_websocket_transport(
     Raises:
         TransportInitializationError: If the transport fails to start
     """
-    try:
-        logger.info(f"Starting MCP server in WebSocket mode on {host}:{port}")
-
-        ws_config = {
-            "host": host,
-            "port": port,
-        }
-
-        # Add any additional configs provided
-        for key, value in kwargs.items():
-            if key not in ws_config:
-                ws_config[key] = value
-
-        # Start the WebSocket transport
-        # FastMCP interface doesn't include run_websocket in type annotations
-        # but it's implemented at runtime
-        getattr(mcp_server, "run_websocket")(**ws_config)
-    except Exception as e:
-        error_msg = f"WebSocket transport error on {host}:{port}: {str(e)}"
-        logger.error(error_msg)
-        msg = f"Failed to start WebSocket transport on {host}:{port}:"
-        msg += f" {str(e)}"
-        raise TransportInitializationError(msg) from e
+    # Note: The current version of the MCP SDK does not support WebSocket transport
+    # through the FastMCP.run() method. It only supports 'stdio' and 'sse' transports.
+    # This function is maintained for backward compatibility but will raise an error.
+    
+    error_msg = (
+        "WebSocket transport is not supported in the current version of the MCP SDK. "
+        "Please use STDIO or HTTP/SSE transport instead."
+    )
+    logger.error(error_msg)
+    raise TransportInitializationError(error_msg)
 
 
 def get_transport_handler(transport_type: str) -> Callable[[FastMCP], None]:

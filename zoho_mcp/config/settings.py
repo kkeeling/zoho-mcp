@@ -52,11 +52,13 @@ class Settings:
     ZOHO_ORGANIZATION_ID: str = os.environ.get("ZOHO_ORGANIZATION_ID", "")
     
     # Zoho API URLs
-    ZOHO_REGION: str = os.environ.get("ZOHO_REGION", "US")
+    # Strip any inline comments from environment variables
+    _zoho_region = os.environ.get("ZOHO_REGION", "US")
+    ZOHO_REGION: str = _zoho_region.split("#")[0].strip() if isinstance(_zoho_region, str) else "US"
     ZOHO_API_BASE_URL: str = os.environ.get(
         "ZOHO_API_BASE_URL", "https://www.zohoapis.com/books/v3"
     )
-    domain = _get_domain(os.environ.get('ZOHO_REGION', 'US'))
+    domain = _get_domain(ZOHO_REGION)
     ZOHO_AUTH_BASE_URL: str = os.environ.get(
         "ZOHO_AUTH_BASE_URL", f"https://accounts.zoho.{domain}/oauth/v2"
     )
@@ -68,7 +70,9 @@ class Settings:
     )
     
     # Logging
-    LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
+    # Strip any inline comments from environment variables
+    _log_level = os.environ.get("LOG_LEVEL", "INFO")
+    LOG_LEVEL: str = _log_level.split("#")[0].strip() if isinstance(_log_level, str) else "INFO"
     LOG_FORMAT: str = os.environ.get(
         "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )

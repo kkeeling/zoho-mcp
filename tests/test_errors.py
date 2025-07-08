@@ -6,6 +6,8 @@ import unittest
 import json
 from typing import Dict, Any
 
+from zoho_mcp.config import settings
+
 from zoho_mcp.errors import (
     ZohoMCPError,
     APIError,
@@ -254,7 +256,15 @@ class TestErrorUtilities(unittest.TestCase):
         std_error = ValueError("Invalid value")
         std_error_response = handle_exception(std_error, log_exception=False)
         self.assertEqual(std_error_response["code"], "INTERNAL_ERROR")
-        self.assertEqual(std_error_response["message"], "An internal error occurred")
+        
+        # The message will depend on the LOG_LEVEL setting
+        # - If DEBUG, it will include the actual error message
+        # - Otherwise, it will be a generic message
+        if settings.LOG_LEVEL.upper() == "DEBUG":
+            self.assertEqual(std_error_response["message"], "Invalid value")
+        else:
+            self.assertEqual(std_error_response["message"], "An internal error occurred")
+            
         self.assertEqual(std_error_response["data"]["status"], 500)
     
     def test_validate_required_params(self):
