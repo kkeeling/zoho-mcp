@@ -29,6 +29,7 @@ def mock_settings():
         mock_settings.ZOHO_CLIENT_SECRET = "test_client_secret"
         mock_settings.domain = "com"
         mock_settings.ZOHO_AUTH_BASE_URL = "https://accounts.zoho.com/oauth/v2"
+        mock_settings.ZOHO_OAUTH_SCOPE = "ZohoBooks.fullaccess.all"
         yield mock_settings
 
 
@@ -164,7 +165,7 @@ class TestOAuthFlow:
     @mock.patch('zoho_mcp.auth_flow.exchange_code_for_token')
     @mock.patch('zoho_mcp.auth_flow.update_env_file')
     @mock.patch('zoho_mcp.auth_flow.start_callback_server')
-    def test_run_oauth_flow_success(self, mock_server, mock_update, mock_exchange, 
+    def test_run_oauth_flow_success(self, mock_server, mock_update, mock_exchange,
                                   mock_browser, mock_sleep, mock_settings):
         """Test successful OAuth flow."""
         # Setup mocks
@@ -188,6 +189,26 @@ class TestOAuthFlow:
         
         # Clean up
         mock_server.return_value.shutdown.assert_called_once()
+
+    @mock.patch('zoho_mcp.auth_flow.time.sleep', return_value=None)
+    @mock.patch('zoho_mcp.auth_flow.webbrowser.open')
+    @mock.patch('zoho_mcp.auth_flow.exchange_code_for_token')
+    @mock.patch('zoho_mcp.auth_flow.update_env_file')
+    @mock.patch('zoho_mcp.auth_flow.start_callback_server')
+    def test_run_oauth_flow_custom_scope(self, mock_server, mock_update, mock_exchange,
+                                         mock_browser, mock_sleep, mock_settings):
+        """Test that OAuth flow uses scope from settings."""
+        mock_server.return_value = mock.Mock()
+        mock_exchange.return_value = {"refresh_token": "tok"}
+        mock_browser.return_value = True
+        OAuthCallbackHandler.error = None
+        OAuthCallbackHandler.auth_code = "auth_code"
+        mock_settings.ZOHO_OAUTH_SCOPE = "ZohoBooks.invoices.READ"
+
+        run_oauth_flow(port=8094)
+
+        auth_url = mock_browser.call_args[0][0]
+        assert "scope=ZohoBooks.invoices.READ" in auth_url
     
     @mock.patch('zoho_mcp.auth_flow.start_callback_server')
     def test_run_oauth_flow_missing_credentials(self, mock_server, mock_settings):

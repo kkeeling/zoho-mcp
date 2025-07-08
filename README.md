@@ -2,6 +2,8 @@
 
 A Model Control Protocol (MCP) server that exposes tools for interacting with Zoho Books. This server allows AI agents like Anthropic Claude Desktop and Cursor to access Zoho Books operations through natural language commands.
 
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/kkeeling/zoho-mcp?utm_source=oss&utm_medium=github&utm_campaign=kkeeling%2Fzoho-mcp&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 ## Table of Contents
 
 - [Features](#features)
