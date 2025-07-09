@@ -24,12 +24,12 @@ from zoho_mcp.models.invoices import (
     InvoiceResponse,
     InvoicesListResponse,
 )
-from zoho_mcp.tools.api import zoho_api_request
+from zoho_mcp.tools.api import zoho_api_request_async
 
 logger = logging.getLogger(__name__)
 
 
-def list_invoices(
+async def list_invoices(
     page: int = 1,
     page_size: int = 25,
     status: Optional[str] = None,
@@ -82,7 +82,7 @@ def list_invoices(
         params["search_text"] = search_text
     
     try:
-        response = zoho_api_request("GET", "/invoices", params=params)
+        response = await zoho_api_request_async("GET", "/invoices", params=params)
         
         # Parse the response
         invoices_response = InvoicesListResponse.model_validate(response)
@@ -108,7 +108,7 @@ def list_invoices(
         raise
 
 
-def create_invoice(**kwargs) -> Dict[str, Any]:
+async def create_invoice(**kwargs) -> Dict[str, Any]:
     """
     Create a new invoice in Zoho Books.
     
@@ -153,7 +153,7 @@ def create_invoice(**kwargs) -> Dict[str, Any]:
         data["due_date"] = data["due_date"].isoformat()
     
     try:
-        response = zoho_api_request("POST", "/invoices", json=data)
+        response = await zoho_api_request_async("POST", "/invoices", json_data=data)
         
         # Parse the response
         invoice_response = InvoiceResponse.model_validate(response)
@@ -170,7 +170,7 @@ def create_invoice(**kwargs) -> Dict[str, Any]:
         raise
 
 
-def get_invoice(invoice_id: str) -> Dict[str, Any]:
+async def get_invoice(invoice_id: str) -> Dict[str, Any]:
     """
     Get an invoice by ID from Zoho Books.
     
@@ -186,7 +186,7 @@ def get_invoice(invoice_id: str) -> Dict[str, Any]:
     logger.info(f"Getting invoice with ID: {invoice_id}")
     
     try:
-        response = zoho_api_request("GET", f"/invoices/{invoice_id}")
+        response = await zoho_api_request_async("GET", f"/invoices/{invoice_id}")
         
         # Parse the response
         invoice_response = InvoiceResponse.model_validate(response)
@@ -210,7 +210,7 @@ def get_invoice(invoice_id: str) -> Dict[str, Any]:
         raise
 
 
-def email_invoice(
+async def email_invoice(
     invoice_id: str,
     to_email: List[str],
     subject: Optional[str] = None,
@@ -256,7 +256,7 @@ def email_invoice(
     data = {k: v for k, v in data.items() if v is not None}
     
     try:
-        response = zoho_api_request("POST", f"/invoices/{invoice_id}/email", json=data)
+        response = await zoho_api_request_async("POST", f"/invoices/{invoice_id}/email", json_data=data)
         
         return {
             "success": True,
@@ -269,7 +269,7 @@ def email_invoice(
         raise
 
 
-def mark_invoice_as_sent(invoice_id: str) -> Dict[str, Any]:
+async def mark_invoice_as_sent(invoice_id: str) -> Dict[str, Any]:
     """
     Mark an invoice as sent in Zoho Books.
     
@@ -285,7 +285,7 @@ def mark_invoice_as_sent(invoice_id: str) -> Dict[str, Any]:
     logger.info(f"Marking invoice {invoice_id} as sent")
     
     try:
-        response = zoho_api_request("POST", f"/invoices/{invoice_id}/status/sent")
+        response = await zoho_api_request_async("POST", f"/invoices/{invoice_id}/status/sent")
         
         return {
             "success": True,
@@ -298,7 +298,7 @@ def mark_invoice_as_sent(invoice_id: str) -> Dict[str, Any]:
         raise
 
 
-def void_invoice(invoice_id: str) -> Dict[str, Any]:
+async def void_invoice(invoice_id: str) -> Dict[str, Any]:
     """
     Void an invoice in Zoho Books.
     
@@ -314,7 +314,7 @@ def void_invoice(invoice_id: str) -> Dict[str, Any]:
     logger.info(f"Voiding invoice {invoice_id}")
     
     try:
-        response = zoho_api_request("POST", f"/invoices/{invoice_id}/status/void")
+        response = await zoho_api_request_async("POST", f"/invoices/{invoice_id}/status/void")
         
         return {
             "success": True,
@@ -324,6 +324,121 @@ def void_invoice(invoice_id: str) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"Error voiding invoice: {str(e)}")
+        raise
+
+
+async def record_payment(
+    invoice_id: str,
+    amount: float,
+    payment_date: Optional[Union[str, date]] = None,
+    payment_mode: str = "cash",
+    reference_number: Optional[str] = None,
+    description: Optional[str] = None,
+    bank_charges: Optional[float] = None,
+    tax_amount_withheld: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Record a payment for an invoice in Zoho Books.
+    
+    Args:
+        invoice_id: ID of the invoice to record payment for
+        amount: Payment amount
+        payment_date: Date of payment (YYYY-MM-DD, default: current date)
+        payment_mode: Mode of payment (cash, check, bank_transfer, credit_card, etc.)
+        reference_number: Payment reference number
+        description: Payment description
+        bank_charges: Bank charges if any
+        tax_amount_withheld: Tax amount withheld if any
+        
+    Returns:
+        Payment details and updated invoice information
+        
+    Raises:
+        Exception: If the API request fails
+    """
+    logger.info(f"Recording payment of {amount} for invoice {invoice_id}")
+    
+    # Prepare payment data
+    data = {
+        "amount": amount,
+        "payment_mode": payment_mode,
+    }
+    
+    # Add optional fields if provided
+    if payment_date:
+        data["date"] = str(payment_date) if isinstance(payment_date, date) else payment_date
+    if reference_number:
+        data["reference_number"] = reference_number
+    if description:
+        data["description"] = description
+    if bank_charges is not None:
+        data["bank_charges"] = bank_charges
+    if tax_amount_withheld is not None:
+        data["tax_amount_withheld"] = tax_amount_withheld
+    
+    try:
+        response = await zoho_api_request_async("POST", f"/invoices/{invoice_id}/payments", json_data=data)
+        
+        return {
+            "success": True,
+            "message": response.get("message", "Payment recorded successfully"),
+            "payment": response.get("payment", {}),
+            "invoice_id": invoice_id,
+        }
+        
+    except Exception as e:
+        logger.error(f"Error recording payment: {str(e)}")
+        raise
+
+
+async def send_payment_reminder(
+    invoice_id: str,
+    to_email: Optional[List[str]] = None,
+    subject: Optional[str] = None,
+    body: Optional[str] = None,
+    cc_email: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Send a payment reminder for an overdue invoice.
+    
+    Args:
+        invoice_id: ID of the invoice to send reminder for
+        to_email: List of email addresses to send to (uses customer email if not provided)
+        subject: Email subject (uses default reminder subject if not provided)
+        body: Email body content (uses default reminder template if not provided)
+        cc_email: List of email addresses to CC
+        
+    Returns:
+        Success message
+        
+    Raises:
+        Exception: If the API request fails
+    """
+    logger.info(f"Sending payment reminder for invoice {invoice_id}")
+    
+    # Prepare data for API request
+    data = {}
+    
+    if to_email:
+        data["to_mail"] = to_email
+    if subject:
+        data["subject"] = subject
+    if body:
+        data["body"] = body
+    if cc_email:
+        data["cc_mail"] = cc_email
+    
+    try:
+        response = await zoho_api_request_async("POST", f"/invoices/{invoice_id}/paymentreminder", json_data=data if data else None)
+        
+        return {
+            "success": True,
+            "message": response.get("message", "Payment reminder sent successfully"),
+            "invoice_id": invoice_id,
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending payment reminder: {str(e)}")
         raise
 
 
@@ -575,5 +690,78 @@ void_invoice.parameters = {  # type: ignore
     "invoice_id": {
         "type": "string",
         "description": "ID of the invoice to void",
+    },
+}
+
+record_payment.name = "record_payment"  # type: ignore
+record_payment.description = "Record a payment for an invoice in Zoho Books"  # type: ignore
+record_payment.parameters = {  # type: ignore
+    "invoice_id": {
+        "type": "string",
+        "description": "ID of the invoice to record payment for",
+    },
+    "amount": {
+        "type": "number",
+        "description": "Payment amount",
+    },
+    "payment_date": {
+        "type": "string",
+        "description": "Date of payment (YYYY-MM-DD, default: current date)",
+        "optional": True,
+    },
+    "payment_mode": {
+        "type": "string",
+        "description": "Mode of payment (cash, check, bank_transfer, credit_card, etc.)",
+        "default": "cash",
+        "optional": True,
+    },
+    "reference_number": {
+        "type": "string",
+        "description": "Payment reference number",
+        "optional": True,
+    },
+    "description": {
+        "type": "string",
+        "description": "Payment description",
+        "optional": True,
+    },
+    "bank_charges": {
+        "type": "number",
+        "description": "Bank charges if any",
+        "optional": True,
+    },
+    "tax_amount_withheld": {
+        "type": "number",
+        "description": "Tax amount withheld if any",
+        "optional": True,
+    },
+}
+
+send_payment_reminder.name = "send_payment_reminder"  # type: ignore
+send_payment_reminder.description = "Send a payment reminder for an overdue invoice"  # type: ignore
+send_payment_reminder.parameters = {  # type: ignore
+    "invoice_id": {
+        "type": "string",
+        "description": "ID of the invoice to send reminder for",
+    },
+    "to_email": {
+        "type": "array",
+        "description": "List of email addresses to send to (uses customer email if not provided)",
+        "optional": True,
+    },
+    "subject": {
+        "type": "string",
+        "description": "Email subject (uses default reminder subject if not provided)",
+        "optional": True,
+    },
+    "body": {
+        "type": "string",
+        "description": "Email body content (uses default reminder template if not provided)",
+        "optional": True,
+    },
+    "cc_email": {
+        "type": "array",
+        "description": "List of email addresses to CC",
+        "optional": True,
     },
 }
