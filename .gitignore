@@ -5,3 +5,11 @@ config/.env
 # Claude-specific files
 .claude/hook-state.json
 .claude/project-memory.md
+
+# PyInstaller artifacts
+build/
+dist/
+*.spec.bak
+__pycache__/
+config/.token_cache
+.zoho_refresh_token

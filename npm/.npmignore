@@ -1,0 +1,14 @@
+# Don't publish source files
+*.ts
+*.spec.js
+.github/
+docs/
+tests/
+
+# Don't publish binaries (they're downloaded on install)
+bin/
+
+# Development files
+.env
+.env.local
+*.log

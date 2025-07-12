@@ -223,9 +223,16 @@ def setup_argparser() -> argparse.ArgumentParser:
     """
     description = "Zoho Books MCP Integration Server"
     parser = argparse.ArgumentParser(description=description)
+    
+    # Add version argument
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="Zoho MCP Server v0.1.0"
+    )
 
     # Transport mode arguments
-    transport_group = parser.add_mutually_exclusive_group(required=True)
+    transport_group = parser.add_mutually_exclusive_group(required=False)
     transport_group.add_argument(
         "--stdio",
         action="store_true",

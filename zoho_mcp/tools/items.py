@@ -21,12 +21,12 @@ from zoho_mcp.models.items import (
     ItemResponse,
     ItemsListResponse,
 )
-from zoho_mcp.tools.api import zoho_api_request
+from zoho_mcp.tools.api import zoho_api_request_async
 
 logger = logging.getLogger(__name__)
 
 
-def list_items(
+async def list_items(
     page: int = 1,
     page_size: int = 25,
     item_type: Optional[Literal["service", "goods", "inventory", "all"]] = None,
@@ -84,7 +84,7 @@ def list_items(
         params["search_text"] = search_text
     
     try:
-        response = zoho_api_request("GET", "/items", params=params)
+        response = await zoho_api_request_async("GET", "/items", params=params)
         
         # Parse the response
         items_response = ItemsListResponse.model_validate(response)
@@ -110,7 +110,7 @@ def list_items(
         raise
 
 
-def create_item(
+async def create_item(
     name: str,
     rate: float,
     description: Optional[str] = None,
@@ -188,7 +188,7 @@ def create_item(
     data = validated_item.model_dump(exclude_none=True)
     
     try:
-        response = zoho_api_request("POST", "/items", json=data)
+        response = await zoho_api_request_async("POST", "/items", json_data=data)
         
         # Parse the response
         item_response = ItemResponse.model_validate(response)
@@ -205,7 +205,7 @@ def create_item(
         raise
 
 
-def get_item(item_id: str) -> Dict[str, Any]:
+async def get_item(item_id: str) -> Dict[str, Any]:
     """
     Get an item by ID from Zoho Books.
     
@@ -226,7 +226,7 @@ def get_item(item_id: str) -> Dict[str, Any]:
         raise ValueError("Invalid item ID: Item ID cannot be empty")
     
     try:
-        response = zoho_api_request("GET", f"/items/{item_id}")
+        response = await zoho_api_request_async("GET", f"/items/{item_id}")
         
         # Parse the response
         item_response = ItemResponse.model_validate(response)
@@ -250,7 +250,7 @@ def get_item(item_id: str) -> Dict[str, Any]:
         raise
 
 
-def update_item(
+async def update_item(
     item_id: str,
     name: Optional[str] = None,
     rate: Optional[float] = None,
@@ -295,7 +295,7 @@ def update_item(
     
     # First, get the current item to update only the provided fields
     try:
-        current_item = get_item(item_id)
+        current_item = await get_item(item_id)
         if not current_item["item"]:
             raise ValueError(f"Item with ID {item_id} not found")
         
@@ -342,7 +342,7 @@ def update_item(
             raise ValueError(f"Invalid update data: {str(e)}")
         
         # Make the API request
-        response = zoho_api_request("PUT", f"/items/{item_id}", json=data)
+        response = await zoho_api_request_async("PUT", f"/items/{item_id}", json_data=data)
         
         # Parse the response
         item_response = ItemResponse.model_validate(response)

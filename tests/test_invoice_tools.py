@@ -41,7 +41,7 @@ def test_list_invoices_default_params():
                 "page": 1,
                 "per_page": 25,
                 "sort_column": "created_time",
-                "sort_order": "descending",
+                "sort_order": "D",
             }
         )
         
@@ -92,7 +92,7 @@ def test_list_invoices_with_filters():
                 "date_end": "2023-12-31",
                 "search_text": "Test",
                 "sort_column": "date",
-                "sort_order": "ascending",
+                "sort_order": "A",
             }
         )
         

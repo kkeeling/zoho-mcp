@@ -152,7 +152,7 @@ class TestExpenseTools(unittest.TestCase):
         self.assertEqual(kwargs["params"]["date.to"], "2025-01-31")
         self.assertEqual(kwargs["params"]["search_text"], "office")
         self.assertEqual(kwargs["params"]["sort_column"], "date")
-        self.assertEqual(kwargs["params"]["sort_order"], "ascending")
+        self.assertEqual(kwargs["params"]["sort_order"], "A")
         
         # Verify the result
         self.assertEqual(len(result["expenses"]), 1)

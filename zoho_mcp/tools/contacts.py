@@ -24,17 +24,16 @@ from zoho_mcp.models.contacts import (
     ContactResponse,
     ContactsListResponse,
 )
-from zoho_mcp.tools.api import zoho_api_request
+from zoho_mcp.tools.api import zoho_api_request_async
 
 logger = logging.getLogger(__name__)
 
 
-def list_contacts(
+async def list_contacts(
     contact_type: str = "all",
     page: int = 1,
     page_size: int = 25,
     search_text: Optional[str] = None,
-    filter_by: str = "active",
     sort_column: str = "contact_name",
     sort_order: str = "ascending",
 ) -> Dict[str, Any]:
@@ -46,7 +45,6 @@ def list_contacts(
         page: Page number for pagination
         page_size: Number of contacts per page
         search_text: Search text to filter contacts by name, email, etc.
-        filter_by: Filter contacts by status (all, active, inactive)
         sort_column: Column to sort by (contact_name, created_time, last_modified_time)
         sort_order: Sort order (ascending or descending)
         
@@ -55,16 +53,20 @@ def list_contacts(
     """
     logger.info(
         f"Listing contacts with type={contact_type}, page={page}, " 
-        f"filter_by={filter_by}, search_text={search_text or 'None'}"
+        f"search_text={search_text or 'None'}"
     )
     
     params = {
         "page": page,
         "per_page": page_size,
-        "filter_by": filter_by,
         "sort_column": sort_column,
         "sort_order": sort_order,
     }
+    
+    # Note: Zoho Books API doesn't support filter_by parameter for contacts
+    # Status filtering (active/inactive) might not be available via the list endpoint
+    # The API provides separate endpoints to activate/deactivate contacts but
+    # may not support filtering by status when listing
     
     # Add search_text if provided
     if search_text:
@@ -79,7 +81,7 @@ def list_contacts(
         endpoint = "/contacts"
     
     try:
-        response = zoho_api_request("GET", endpoint, params=params)
+        response = await zoho_api_request_async("GET", endpoint, params=params)
         
         # Parse the response
         contacts_response = ContactsListResponse.model_validate(response)
@@ -105,7 +107,7 @@ def list_contacts(
         raise
 
 
-def create_customer(**kwargs) -> Dict[str, Any]:
+async def create_customer(**kwargs) -> Dict[str, Any]:
     """
     Create a new customer in Zoho Books.
     
@@ -144,7 +146,7 @@ def create_customer(**kwargs) -> Dict[str, Any]:
     data = customer_data.model_dump(exclude_none=True)
     
     try:
-        response = zoho_api_request("POST", "/contacts", json=data)
+        response = await zoho_api_request_async("POST", "/contacts", json_data=data)
         
         # Parse the response
         contact_response = ContactResponse.model_validate(response)
@@ -161,7 +163,7 @@ def create_customer(**kwargs) -> Dict[str, Any]:
         raise
 
 
-def create_vendor(**kwargs) -> Dict[str, Any]:
+async def create_vendor(**kwargs) -> Dict[str, Any]:
     """
     Create a new vendor in Zoho Books.
     
@@ -200,7 +202,7 @@ def create_vendor(**kwargs) -> Dict[str, Any]:
     data = vendor_data.model_dump(exclude_none=True)
     
     try:
-        response = zoho_api_request("POST", "/contacts", json=data)
+        response = await zoho_api_request_async("POST", "/contacts", json_data=data)
         
         # Parse the response
         contact_response = ContactResponse.model_validate(response)
@@ -217,7 +219,7 @@ def create_vendor(**kwargs) -> Dict[str, Any]:
         raise
 
 
-def get_contact(contact_id: str) -> Dict[str, Any]:
+async def get_contact(contact_id: str) -> Dict[str, Any]:
     """
     Get a contact by ID from Zoho Books.
     
@@ -233,7 +235,7 @@ def get_contact(contact_id: str) -> Dict[str, Any]:
     logger.info(f"Getting contact with ID: {contact_id}")
     
     try:
-        response = zoho_api_request("GET", f"/contacts/{contact_id}")
+        response = await zoho_api_request_async("GET", f"/contacts/{contact_id}")
         
         # Parse the response
         contact_response = ContactResponse.model_validate(response)
@@ -257,7 +259,7 @@ def get_contact(contact_id: str) -> Dict[str, Any]:
         raise
 
 
-def delete_contact(contact_id: str) -> Dict[str, Any]:
+async def delete_contact(contact_id: str) -> Dict[str, Any]:
     """
     Delete a contact from Zoho Books.
     
@@ -281,7 +283,7 @@ def delete_contact(contact_id: str) -> Dict[str, Any]:
         raise ValueError(f"Invalid contact ID: {str(e)}")
     
     try:
-        response = zoho_api_request("DELETE", f"/contacts/{contact_id}")
+        response = await zoho_api_request_async("DELETE", f"/contacts/{contact_id}")
         
         # The API response for delete operations might be minimal
         # so we construct a standardized response
@@ -293,6 +295,127 @@ def delete_contact(contact_id: str) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"Error deleting contact: {str(e)}")
+        raise
+
+
+async def update_contact(contact_id: str, **kwargs) -> Dict[str, Any]:
+    """
+    Update an existing contact in Zoho Books.
+    
+    Args:
+        contact_id: ID of the contact to update
+        **kwargs: Contact details to update including:
+          - contact_name: Name of the contact
+          - email: Primary email address
+          - phone: Primary phone number
+          - mobile: Mobile/cell phone number
+          - company_name: Company name
+          - website: Website URL
+          - notes: Notes about the contact
+          - currency_id: ID of the currency used by this contact
+          - payment_terms: Payment terms in days
+          - billing_address: Contact billing address details
+          - shipping_address: Contact shipping address details
+          - contact_persons: List of additional contact persons
+          - custom_fields: Custom field values
+        
+    Returns:
+        The updated contact details
+        
+    Raises:
+        Exception: If validation fails or the API request fails
+    """
+    logger.info(f"Updating contact with ID: {contact_id}")
+    
+    # Prepare data for API request - only include fields that were provided
+    data = {k: v for k, v in kwargs.items() if v is not None}
+    
+    if not data:
+        raise ValueError("No fields provided to update")
+    
+    try:
+        response = await zoho_api_request_async("PUT", f"/contacts/{contact_id}", json_data=data)
+        
+        # Parse the response
+        contact_response = ContactResponse.model_validate(response)
+        
+        logger.info(f"Contact updated successfully: {contact_id}")
+        
+        return {
+            "contact": contact_response.contact,
+            "message": contact_response.message or "Contact updated successfully",
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating contact: {str(e)}")
+        raise
+
+
+async def email_statement(
+    contact_id: str,
+    from_date: str,
+    to_date: str,
+    email_to: Optional[str] = None,
+    cc_emails: Optional[str] = None,
+    subject: Optional[str] = None,
+    body: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Send an account statement to a contact via email.
+    
+    Args:
+        contact_id: ID of the contact to send statement for
+        from_date: Start date for the statement (YYYY-MM-DD format)
+        to_date: End date for the statement (YYYY-MM-DD format)
+        email_to: Override recipient email addresses (comma-separated)
+        cc_emails: CC email addresses (comma-separated)
+        subject: Custom email subject
+        body: Custom email body message
+        
+    Returns:
+        Success message and email details
+        
+    Raises:
+        Exception: If the API request fails
+    """
+    logger.info(f"Sending statement to contact: {contact_id} for period {from_date} to {to_date}")
+    
+    # Prepare email parameters
+    params = {
+        "from_date": from_date,
+        "to_date": to_date,
+    }
+    
+    # Prepare email body data
+    email_data = {}
+    if email_to:
+        email_data["to_mail_ids"] = email_to
+    if cc_emails:
+        email_data["cc_mail_ids"] = cc_emails
+    if subject:
+        email_data["subject"] = subject
+    if body:
+        email_data["body"] = body
+    
+    try:
+        response = await zoho_api_request_async(
+            "POST", 
+            f"/contacts/{contact_id}/statements/email",
+            params=params,
+            json_data=email_data if email_data else None
+        )
+        
+        logger.info(f"Statement emailed successfully to contact: {contact_id}")
+        
+        return {
+            "success": True,
+            "message": response.get("message", "Statement emailed successfully"),
+            "contact_id": contact_id,
+            "period": f"{from_date} to {to_date}",
+        }
+        
+    except Exception as e:
+        logger.error(f"Error emailing statement: {str(e)}")
         raise
 
 
@@ -319,13 +442,6 @@ list_contacts.parameters = {  # type: ignore
     "search_text": {
         "type": "string",
         "description": "Search text to filter contacts by name, email, etc.",
-        "optional": True,
-    },
-    "filter_by": {
-        "type": "string",
-        "description": "Filter contacts by status",
-        "enum": ["all", "active", "inactive"],
-        "default": "active",
         "optional": True,
     },
     "sort_column": {
@@ -497,5 +613,116 @@ delete_contact.parameters = {  # type: ignore
     "contact_id": {
         "type": "string",
         "description": "ID of the contact to delete",
+    },
+}
+
+update_contact.name = "update_contact"  # type: ignore
+update_contact.description = "Update an existing contact in Zoho Books"  # type: ignore
+update_contact.parameters = {  # type: ignore
+    "contact_id": {
+        "type": "string",
+        "description": "ID of the contact to update",
+    },
+    "contact_name": {
+        "type": "string",
+        "description": "Name of the contact",
+        "optional": True,
+    },
+    "email": {
+        "type": "string",
+        "description": "Primary email address",
+        "optional": True,
+    },
+    "phone": {
+        "type": "string",
+        "description": "Primary phone number",
+        "optional": True,
+    },
+    "mobile": {
+        "type": "string",
+        "description": "Mobile/cell phone number",
+        "optional": True,
+    },
+    "company_name": {
+        "type": "string",
+        "description": "Company name",
+        "optional": True,
+    },
+    "website": {
+        "type": "string",
+        "description": "Website URL",
+        "optional": True,
+    },
+    "notes": {
+        "type": "string",
+        "description": "Notes about the contact",
+        "optional": True,
+    },
+    "currency_id": {
+        "type": "string",
+        "description": "ID of the currency used by this contact",
+        "optional": True,
+    },
+    "payment_terms": {
+        "type": "integer",
+        "description": "Payment terms in days",
+        "optional": True,
+    },
+    "billing_address": {
+        "type": "object",
+        "description": "Contact billing address details",
+        "optional": True,
+    },
+    "shipping_address": {
+        "type": "object",
+        "description": "Contact shipping address details",
+        "optional": True,
+    },
+    "contact_persons": {
+        "type": "array",
+        "description": "List of additional contact persons",
+        "optional": True,
+    },
+    "custom_fields": {
+        "type": "object",
+        "description": "Custom field values",
+        "optional": True,
+    },
+}
+
+email_statement.name = "email_statement"  # type: ignore
+email_statement.description = "Send an account statement to a contact via email"  # type: ignore
+email_statement.parameters = {  # type: ignore
+    "contact_id": {
+        "type": "string",
+        "description": "ID of the contact to send statement for",
+    },
+    "from_date": {
+        "type": "string",
+        "description": "Start date for the statement (YYYY-MM-DD format)",
+    },
+    "to_date": {
+        "type": "string",
+        "description": "End date for the statement (YYYY-MM-DD format)",
+    },
+    "email_to": {
+        "type": "string",
+        "description": "Override recipient email addresses (comma-separated)",
+        "optional": True,
+    },
+    "cc_emails": {
+        "type": "string",
+        "description": "CC email addresses (comma-separated)",
+        "optional": True,
+    },
+    "subject": {
+        "type": "string",
+        "description": "Custom email subject",
+        "optional": True,
+    },
+    "body": {
+        "type": "string",
+        "description": "Custom email body message",
+        "optional": True,
     },
 }

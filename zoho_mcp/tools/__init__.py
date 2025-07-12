@@ -15,13 +15,13 @@ from .api import (
 )
 
 # Import contact management tools
-from .contacts import list_contacts, create_customer, create_vendor, get_contact, delete_contact
+from .contacts import list_contacts, create_customer, create_vendor, get_contact, delete_contact, update_contact, email_statement
 
 # Import invoice management tools
-from .invoices import list_invoices, create_invoice, get_invoice, email_invoice, mark_invoice_as_sent, void_invoice
+from .invoices import list_invoices, create_invoice, get_invoice, email_invoice, mark_invoice_as_sent, void_invoice, record_payment, send_payment_reminder
 
 # Import expense management tools
-from .expenses import list_expenses, create_expense, get_expense, update_expense
+from .expenses import list_expenses, create_expense, get_expense, update_expense, categorize_expense, upload_receipt
 
 # Import item management tools
 from .items import list_items, create_item, get_item, update_item
@@ -40,13 +40,13 @@ __all__ = [
     "ZohoRateLimitError",
     
     # Contact management tools
-    "list_contacts", "create_customer", "create_vendor", "get_contact", "delete_contact",
+    "list_contacts", "create_customer", "create_vendor", "get_contact", "delete_contact", "update_contact", "email_statement",
     
     # Invoice management tools
-    "list_invoices", "create_invoice", "get_invoice", "email_invoice", "mark_invoice_as_sent", "void_invoice",
+    "list_invoices", "create_invoice", "get_invoice", "email_invoice", "mark_invoice_as_sent", "void_invoice", "record_payment", "send_payment_reminder",
     
     # Expense management tools
-    "list_expenses", "create_expense", "get_expense", "update_expense",
+    "list_expenses", "create_expense", "get_expense", "update_expense", "categorize_expense", "upload_receipt",
     
     # Item management tools
     "list_items", "create_item", "get_item", "update_item",

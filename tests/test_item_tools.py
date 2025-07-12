@@ -95,7 +95,7 @@ class TestListItems:
         assert kwargs["params"]["search_text"] == "test"
         assert kwargs["params"]["status"] == "active"
         assert kwargs["params"]["sort_column"] == "name"
-        assert kwargs["params"]["sort_order"] == "descending"
+        assert kwargs["params"]["sort_order"] == "D"
         
         # Verify result
         assert result["items"] == [SAMPLE_ITEM]

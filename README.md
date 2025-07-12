@@ -1,199 +1,316 @@
-# Zoho Books MCP Integration Server
+# Zoho Books MCP Server
 
-A Model Control Protocol (MCP) server that exposes tools for interacting with Zoho Books. This server allows AI agents like Anthropic Claude Desktop and Cursor to access Zoho Books operations through natural language commands.
+Connect your Zoho Books account to AI assistants like Claude Desktop through the Model Context Protocol (MCP).
 
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/kkeeling/zoho-mcp?utm_source=oss&utm_medium=github&utm_campaign=kkeeling%2Fzoho-mcp&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 ## Table of Contents
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-- [Running the Server](#running-the-server)
-  - [STDIO Mode](#stdio-mode-for-claude-desktop)
-  - [HTTP/SSE Mode](#httpsse-mode-for-cursor)
-  - [WebSocket Mode](#websocket-mode)
-- [Available Tools](#available-tools)
-- [Client Integration](#client-integration)
-  - [Quick Start (Claude Desktop)](#quick-start-with-claude-desktop)
-- [Documentation](#documentation)
+- [What is this?](#what-is-this)
+- [Quick Start](#quick-start)
+- [Installation Options](#installation-options)
+- [Available Features](#available-features)
+- [Configuration Guide](#configuration-guide)
+- [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
 
-## Features
+## What is this?
 
-- Provides a comprehensive API for Zoho Books operations
-- Implements the MCP protocol using the Python SDK
-- Supports STDIO, HTTP/SSE, and WebSocket transports
-- Uses Pydantic for input/output validation
-- Handles authentication with Zoho's OAuth system
-- Comprehensive error handling and logging
-- Secure credential management
+This MCP server enables AI assistants to interact with your Zoho Books data through natural language. You can ask Claude to create invoices, track expenses, manage contacts, and more - all through simple conversation.
 
-## Getting Started
+### Example Interactions
+
+- "Create an invoice for Acme Corp for $5,000 for consulting services"
+- "Show me all overdue invoices"
+- "Record an expense of $150 for office supplies"
+- "Email last month's statement to all customers with outstanding balances"
+
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9+
-- Zoho Books account with API access
-- Zoho API credentials (Client ID, Client Secret, Refresh Token)
+- **Zoho Books account** with API access
+- **Claude Desktop** (latest version)
+- **Python 3.9+** or **Docker** (depending on installation method)
 
-### Installation
+### Get Your Zoho API Credentials
 
-1. Clone this repository:
-```bash
-git clone https://github.com/yourusername/zoho-books-mcp-server.git
-cd zoho-books-mcp-server
+1. Go to [Zoho API Console](https://api-console.zoho.com/)
+2. Create a new client:
+   - **IMPORTANT**: Choose "Server-based Applications" (required for OAuth refresh tokens)
+   - Add redirect URI: `http://localhost:8099/callback`
+   - Select required scopes: `ZohoBooks.fullaccess.all` (or specific scopes you need)
+3. Note your **Client ID** and **Client Secret**
+4. Get your **Organization ID** from Zoho Books settings
+
+**Note**: The MCP server handles OAuth token generation automatically - you don't need to manually generate refresh tokens.
+
+## Installation Options
+
+### Option 1: Using npx (Simplest - No Installation Required)
+
+Configure Claude Desktop to use the server directly with npx:
+
+**macOS/Linux:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Windows:** Edit `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "zoho-books": {
+      "command": "npx",
+      "args": ["zoho-mcp-server"],
+      "env": {
+        "ZOHO_CLIENT_ID": "your_client_id_here",
+        "ZOHO_CLIENT_SECRET": "your_client_secret_here",
+        "ZOHO_REFRESH_TOKEN": "your_refresh_token_here",
+        "ZOHO_ORGANIZATION_ID": "your_organization_id_here",
+        "ZOHO_REGION": "US"
+      }
+    }
+  }
+}
 ```
 
-2. Create a virtual environment and install dependencies:
+That's it! No need to install Python or download anything manually.
+
+### Option 2: Using Docker (No Python Required)
+
+```json
+{
+  "mcpServers": {
+    "zoho-books": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "ZOHO_CLIENT_ID",
+        "-e", "ZOHO_CLIENT_SECRET",
+        "-e", "ZOHO_REFRESH_TOKEN",
+        "-e", "ZOHO_ORGANIZATION_ID",
+        "-e", "ZOHO_REGION",
+        "ghcr.io/kkeeling/zoho-mcp-server:latest"
+      ],
+      "env": {
+        "ZOHO_CLIENT_ID": "your_client_id_here",
+        "ZOHO_CLIENT_SECRET": "your_client_secret_here",
+        "ZOHO_REFRESH_TOKEN": "your_refresh_token_here",
+        "ZOHO_ORGANIZATION_ID": "your_organization_id_here",
+        "ZOHO_REGION": "US"
+      }
+    }
+  }
+}
+```
+
+### Option 3: Local Development Setup
+
+If you want to modify the server or run it locally:
+
+1. Clone the repository:
+```bash
+git clone https://github.com/kkeeling/zoho-mcp.git
+cd zoho-mcp
+```
+
+2. Create a virtual environment and install:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-1. Create a configuration file by copying the example:
-```bash
-cp config/.env.example config/.env
-```
-
-2. Edit `config/.env` with your Zoho Books API credentials:
-```
-ZOHO_CLIENT_ID="your_client_id"
-ZOHO_CLIENT_SECRET="your_client_secret"
-ZOHO_REFRESH_TOKEN="your_refresh_token"
-ZOHO_ORGANIZATION_ID="your_organization_id"
-ZOHO_REGION="US"  # Change according to your region (US, EU, IN, AU, etc.)
-```
-
-## Running the Server
-
-### STDIO Mode (for Claude Desktop)
-
-```bash
-python server.py --stdio
-```
-
-### HTTP/SSE Mode (for Cursor)
-
-```bash
-python server.py --port 8000
-```
-
-### WebSocket Mode
-
-```bash
-python server.py --ws
-```
-
-## Available Tools
-
-The server provides the following tools for interacting with Zoho Books:
-
-### Contacts
-- `list_contacts`: Fetch all contacts with optional filters
-- `create_customer`: Create a new customer
-- `create_vendor`: Create a new vendor
-- `get_contact`: Retrieve a specific contact
-- `delete_contact`: Delete a contact
-
-### Invoices
-- `list_invoices`: List invoices with pagination and optional filters
-- `create_invoice`: Create a new invoice
-- `get_invoice`: Retrieve a specific invoice
-- `email_invoice`: Send an invoice by email
-- `mark_invoice_as_sent`: Mark an invoice as sent
-- `void_invoice`: Void an existing invoice
-
-### Expenses
-- `list_expenses`: List expense transactions
-- `create_expense`: Record a new expense
-- `get_expense`: Retrieve a specific expense
-- `update_expense`: Update an existing expense
-
-### Items
-- `list_items`: Retrieve items (products/services)
-- `create_item`: Create a new item
-- `get_item`: Retrieve item details
-- `update_item`: Update an existing item
-
-### Sales Orders
-- `list_sales_orders`: List sales orders with pagination and filters
-- `create_sales_order`: Create a new sales order
-- `get_sales_order`: Retrieve a specific sales order
-- `update_sales_order`: Update an existing sales order
-- `convert_to_invoice`: Convert a sales order to an invoice
-
-## Client Integration
-
-For detailed instructions on integrating the Zoho Books MCP server with different clients, see the following documentation:
-
-- [Claude Desktop Integration Guide](docs/client-integration/claude-desktop.md)
-- [Cursor Integration Guide](docs/client-integration/cursor.md)
-- [Common Operations Examples](docs/examples/common-operations.md)
-- [Troubleshooting Guide](docs/troubleshooting.md)
-
-### Quick Start with Claude Desktop
-
-1. Install Claude Desktop from the [official website](https://claude.ai/desktop).
-
-2. Set up the Zoho Books MCP server by following the [Installation](#installation) and [Configuration](#configuration) steps above.
-
-3. Add the following configuration to Claude Desktop:
-   - Open Claude Desktop, click on the Claude menu and select "Settings..."
-   - Click on "Developer" in the sidebar and then "Edit Config"
-   - Add the following configuration (adjust paths as needed):
-
+3. Configure Claude Desktop:
 ```json
 {
   "mcpServers": {
     "zoho-books": {
-      "command": "python",
+      "command": "/path/to/venv/bin/python",
       "args": [
-        "/path/to/zoho-books-mcp-server/server.py",
+        "/path/to/zoho-mcp/server.py",
         "--stdio"
       ],
-      "cwd": "/path/to/zoho-books-mcp-server"
+      "env": {
+        "ZOHO_CLIENT_ID": "your_client_id_here",
+        "ZOHO_CLIENT_SECRET": "your_client_secret_here",
+        "ZOHO_REFRESH_TOKEN": "your_refresh_token_here",
+        "ZOHO_ORGANIZATION_ID": "your_organization_id_here",
+        "ZOHO_REGION": "US"
+      }
     }
   }
 }
 ```
 
-4. Restart Claude Desktop and start interacting with Zoho Books through natural language!
+### After Configuration
 
-## Documentation
+After saving any configuration:
+1. **Restart Claude Desktop** completely (not just reload)
+2. Look for the 🔌 icon in the bottom-right of the Claude interface
+3. Click it to see available Zoho Books tools
 
-- [Claude Desktop Integration](docs/client-integration/claude-desktop.md) - Detailed guide for setting up and using with Claude Desktop
-- [Cursor Integration](docs/client-integration/cursor.md) - Instructions for integrating with Cursor
-- [Common Operations](docs/examples/common-operations.md) - Examples of typical Zoho Books operations
-- [Troubleshooting Guide](docs/troubleshooting.md) - Solutions for common issues
+## Available Features
+
+### 🛠️ Tools (15 Essential Operations)
+
+#### Invoice Management
+- **Create & Send Invoices** - Generate professional invoices and email them to customers
+- **Record Payments** - Track customer payments and update invoice status
+- **Send Reminders** - Automated payment reminders for overdue invoices
+- **Void Invoices** - Cancel incorrect invoices with proper documentation
+
+#### Contact Management  
+- **Create Customers & Vendors** - Add new business contacts with complete details
+- **Update Contact Info** - Modify contact information as needed
+- **Email Statements** - Send account statements to customers
+- **Delete Contacts** - Remove outdated contact records
+
+#### Expense Tracking
+- **Record Expenses** - Log business expenses with categories
+- **Categorize Transactions** - Organize expenses for better reporting
+- **Upload Receipts** - Attach digital receipts to expense records
+- **Update Expense Details** - Modify expense information after creation
+
+### 📊 Resources (Real-time Data Access)
+
+- **Dashboard Overview** - Business metrics and KPIs at a glance
+- **Invoice Status** - View overdue, unpaid, and recent invoices
+- **Payment Tracking** - Monitor recent payments received
+- **Cash Flow Reports** - Basic financial health indicators
+- **Contact Lists** - Search and filter your business contacts
+- **Expense Reports** - Track spending by category and date
+
+### 🔄 Automated Workflows
+
+- **Invoice Collection Workflow** - Complete cycle from invoice creation to payment
+- **Monthly Invoicing** - Bulk invoice generation for recurring clients
+- **Expense Tracking** - Streamlined expense recording and categorization
+
+## Configuration Guide
+
+### Region Settings
+
+Set `ZOHO_REGION` based on your Zoho Books data center:
+
+- `US` - United States (zoho.com)
+- `EU` - Europe (zoho.eu)
+- `IN` - India (zoho.in)
+- `AU` - Australia (zoho.com.au)
+- `JP` - Japan (zoho.jp)
+- `UK` - United Kingdom (zoho.uk)
+- `CA` - Canada (zoho.ca)
+
+### Scopes and Permissions
+
+The server requires the following Zoho Books API scopes:
+- `ZohoBooks.contacts.ALL`
+- `ZohoBooks.invoices.ALL`
+- `ZohoBooks.expenses.ALL`
+- `ZohoBooks.items.ALL`
+- `ZohoBooks.salesorders.ALL`
+
+### Other MCP Clients
+
+#### VS Code / Cursor
+For HTTP transport support:
+```json
+{
+  "mcpServers": {
+    "zoho-books": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "zoho_mcp",
+        "--port",
+        "8000"
+      ],
+      "env": {
+        "ZOHO_CLIENT_ID": "your_client_id",
+        "ZOHO_CLIENT_SECRET": "your_client_secret",
+        "ZOHO_REFRESH_TOKEN": "your_refresh_token",
+        "ZOHO_ORGANIZATION_ID": "your_organization_id",
+        "ZOHO_REGION": "US"
+      }
+    }
+  }
+}
+
+## Troubleshooting
+
+### Common Issues
+
+**"Tools not showing in Claude Desktop"**
+- Ensure the configuration file path is correct
+- Check that Python path in config matches your installation
+- Restart Claude Desktop after configuration changes
+
+**"Authentication failed"**
+- Verify your Zoho API credentials are correct
+- Check that your refresh token hasn't expired
+- Ensure you're using the correct region setting
+
+**"Module not found errors"**
+- Make sure you've activated your virtual environment
+- Run `pip install -r requirements.txt` again
+- Check that the `cwd` in config points to the project root
+
+For more detailed troubleshooting, see our [Troubleshooting Guide](docs/troubleshooting.md).
 
 ## Development
 
 ### Running Tests
 
 ```bash
+# Run all tests
 pytest
-```
 
-### Running with Coverage
-
-```bash
+# Run with coverage
 pytest --cov=zoho_mcp
+
+# Run specific test file
+pytest tests/test_invoice_tools.py
 ```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Documentation
+
+- [API Documentation](docs/api.md) - Detailed API reference
+- [Common Operations](docs/examples/common-operations.md) - Example use cases
+- [Architecture Overview](docs/architecture.md) - Technical design details
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## How It Works
+
+When you use `npx zoho-mcp-server`, it:
+1. Downloads the appropriate pre-built binary for your platform
+2. Runs it with your provided credentials
+3. No Python, no dependencies, no installation needed!
+
+## Future Improvements
+
+We're working on making this server even easier to use:
+
+- **Dynamic Credentials**: Input credentials through Claude Desktop UI (no environment variables needed)
+- **One-Click Install**: Desktop extension (.dxt) for automatic setup
+- **Auto-updates**: Built-in update notifications and seamless upgrades
+
+Want to help? Check our [Contributing Guide](#contributing) or open an issue!
 
 ## Acknowledgements
 
-- [Zoho Books API Documentation](https://www.zoho.com/books/api/v3/)
-- [MCP Protocol Specification](https://github.com/mcp-sdk/mcp-python-sdk)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Zoho Books API](https://www.zoho.com/books/api/v3/) - Official API documentation
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification
+- [Anthropic](https://www.anthropic.com/) - Creator of Claude and MCP

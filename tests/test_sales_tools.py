@@ -75,7 +75,7 @@ class TestListSalesOrders(unittest.TestCase):
                 "per_page": 25,
                 "filter_by": "all",
                 "sort_column": "date",
-                "sort_order": "descending",
+                "sort_order": "D",
             },
         )
         
