@@ -37,10 +37,14 @@ This MCP server enables AI assistants to interact with your Zoho Books data thro
 ### Get Your Zoho API Credentials
 
 1. Go to [Zoho API Console](https://api-console.zoho.com/)
-2. Create a new client (choose "Server-based Applications")
+2. Create a new client:
+   - **IMPORTANT**: Choose "Server-based Applications" (required for OAuth refresh tokens)
+   - Add redirect URI: `http://localhost:8099/callback`
+   - Select required scopes: `ZohoBooks.fullaccess.all` (or specific scopes you need)
 3. Note your **Client ID** and **Client Secret**
-4. Generate a **Refresh Token** (see [Zoho OAuth Guide](https://www.zoho.com/books/api/v3/oauth/#generate-refresh-token))
-5. Get your **Organization ID** from Zoho Books settings
+4. Get your **Organization ID** from Zoho Books settings
+
+**Note**: The MCP server handles OAuth token generation automatically - you don't need to manually generate refresh tokens.
 
 ## Installation Options
 

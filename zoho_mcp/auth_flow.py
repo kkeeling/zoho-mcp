@@ -291,6 +291,7 @@ def run_oauth_flow(port: int = 8099) -> str:
             f"client_id={client_id}&"
             f"response_type=code&"
             f"access_type=offline&"
+            f"prompt=consent&"
             f"redirect_uri={redirect_uri}"
         )
         

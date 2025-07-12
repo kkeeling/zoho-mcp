@@ -11,3 +11,4 @@ build/
 dist/
 *.spec.bak
 __pycache__/
+config/.token_cache
