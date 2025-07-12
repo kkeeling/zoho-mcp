@@ -36,7 +36,6 @@ def get_platform_name():
 def clean_build_artifacts():
     """Remove previous build artifacts."""
     dirs_to_remove = ['build', 'dist', '__pycache__']
-    files_to_remove = ['*.pyc', '*.pyo', '*.spec.bak']
     
     for dir_name in dirs_to_remove:
         if os.path.exists(dir_name):
@@ -44,7 +43,7 @@ def clean_build_artifacts():
             shutil.rmtree(dir_name)
     
     # Remove pyc files
-    for root, dirs, files in os.walk('.'):
+    for root, _, files in os.walk('.'):
         for file in files:
             if file.endswith(('.pyc', '.pyo')):
                 os.remove(os.path.join(root, file))
