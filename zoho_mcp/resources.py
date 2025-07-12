@@ -6,7 +6,6 @@ through the MCP protocol using URI patterns.
 """
 
 import logging
-from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
 from mcp.server.fastmcp import FastMCP
