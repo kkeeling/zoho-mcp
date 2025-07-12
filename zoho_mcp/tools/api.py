@@ -468,6 +468,13 @@ async def zoho_api_request_async(
     req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
     set_request_context(request_id=req_id)
     
+    # Convert user-friendly parameter values to API-expected values
+    if params and "sort_order" in params:
+        if params["sort_order"] == "ascending":
+            params["sort_order"] = "A"
+        elif params["sort_order"] == "descending":
+            params["sort_order"] = "D"
+    
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:
         params["organization_id"] = ORG_ID
@@ -625,6 +632,13 @@ def zoho_api_request(
     # Generate or use provided request ID for tracing
     req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
     set_request_context(request_id=req_id)
+    
+    # Convert user-friendly parameter values to API-expected values
+    if params and "sort_order" in params:
+        if params["sort_order"] == "ascending":
+            params["sort_order"] = "A"
+        elif params["sort_order"] == "descending":
+            params["sort_order"] = "D"
     
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:

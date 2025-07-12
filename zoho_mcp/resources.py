@@ -117,7 +117,7 @@ def register_resources(mcp: FastMCP) -> None:
             params = {
                 "filter_by": "overdue",
                 "sort_column": "due_date",
-                "sort_order": "ascending",
+                "sort_order": "ascending",  # Will be converted to "A" by API layer
                 "per_page": 100,
             }
             response = await zoho_api_request_async("GET", "/invoices", params=params)
@@ -162,7 +162,7 @@ def register_resources(mcp: FastMCP) -> None:
             params = {
                 "filter_by": "unpaid",
                 "sort_column": "date",
-                "sort_order": "descending",
+                "sort_order": "descending",  # Will be converted to "D" by API layer
                 "per_page": 100,
             }
             response = await zoho_api_request_async("GET", "/invoices", params=params)
@@ -211,7 +211,7 @@ def register_resources(mcp: FastMCP) -> None:
                 "date_start": start_date.strftime("%Y-%m-%d"),
                 "date_end": end_date.strftime("%Y-%m-%d"),
                 "sort_column": "date",
-                "sort_order": "descending",
+                "sort_order": "descending",  # Will be converted to "D" by API layer
                 "per_page": 50,
             }
             

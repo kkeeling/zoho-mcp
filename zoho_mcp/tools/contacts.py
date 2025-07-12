@@ -34,7 +34,6 @@ async def list_contacts(
     page: int = 1,
     page_size: int = 25,
     search_text: Optional[str] = None,
-    filter_by: str = "active",
     sort_column: str = "contact_name",
     sort_order: str = "ascending",
 ) -> Dict[str, Any]:
@@ -46,7 +45,6 @@ async def list_contacts(
         page: Page number for pagination
         page_size: Number of contacts per page
         search_text: Search text to filter contacts by name, email, etc.
-        filter_by: Filter contacts by status (all, active, inactive)
         sort_column: Column to sort by (contact_name, created_time, last_modified_time)
         sort_order: Sort order (ascending or descending)
         
@@ -55,16 +53,20 @@ async def list_contacts(
     """
     logger.info(
         f"Listing contacts with type={contact_type}, page={page}, " 
-        f"filter_by={filter_by}, search_text={search_text or 'None'}"
+        f"search_text={search_text or 'None'}"
     )
     
     params = {
         "page": page,
         "per_page": page_size,
-        "filter_by": filter_by,
         "sort_column": sort_column,
         "sort_order": sort_order,
     }
+    
+    # Note: Zoho Books API doesn't support filter_by parameter for contacts
+    # Status filtering (active/inactive) might not be available via the list endpoint
+    # The API provides separate endpoints to activate/deactivate contacts but
+    # may not support filtering by status when listing
     
     # Add search_text if provided
     if search_text:
@@ -440,13 +442,6 @@ list_contacts.parameters = {  # type: ignore
     "search_text": {
         "type": "string",
         "description": "Search text to filter contacts by name, email, etc.",
-        "optional": True,
-    },
-    "filter_by": {
-        "type": "string",
-        "description": "Filter contacts by status",
-        "enum": ["all", "active", "inactive"],
-        "default": "active",
         "optional": True,
     },
     "sort_column": {

@@ -12,3 +12,4 @@ dist/
 *.spec.bak
 __pycache__/
 config/.token_cache
+.zoho_refresh_token
