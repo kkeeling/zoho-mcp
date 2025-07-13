@@ -574,7 +574,7 @@ async def zoho_api_request_async(
                                 return result
                             return {"text": response.text}
                             
-                except httpx.HTTPStatusError as e:
+                except httpx.HTTPStatusError:
                     # This shouldn't happen as we handle status codes above
                     raise
                 except (httpx.RequestError, httpx.TimeoutException) as e:
