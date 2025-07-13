@@ -16,11 +16,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Configuration
 CREDENTIALS = {
-    "ZOHO_CLIENT_ID": "1000.PYEHX2LZMMYHUNT2PFRL37BV3172VI",
-    "ZOHO_CLIENT_SECRET": "c47eec4550ba1b5c4a179d24bac9f328acc3ab1682",
-    "ZOHO_ORGANIZATION_ID": "880650860",
-    "ZOHO_REGION": "US"
+    "ZOHO_CLIENT_ID": os.getenv("ZOHO_CLIENT_ID"),
+    "ZOHO_CLIENT_SECRET": os.getenv("ZOHO_CLIENT_SECRET"),
+    "ZOHO_ORGANIZATION_ID": os.getenv("ZOHO_ORGANIZATION_ID"),
+    "ZOHO_REGION": os.getenv("ZOHO_REGION", "US")  # Default to US if not set
 }
+
+# Validate required credentials
+missing_creds = [key for key, value in CREDENTIALS.items() if not value and key != "ZOHO_REGION"]
+if missing_creds:
+    print(f"ERROR: Missing required environment variables: {', '.join(missing_creds)}")
+    print("\nPlease set the following environment variables:")
+    print("  export ZOHO_CLIENT_ID='your_client_id'")
+    print("  export ZOHO_CLIENT_SECRET='your_client_secret'")
+    print("  export ZOHO_ORGANIZATION_ID='your_organization_id'")
+    print("  export ZOHO_REGION='your_region' (optional, defaults to US)")
+    sys.exit(1)
 
 # Load refresh token if available
 REFRESH_TOKEN_FILE = ".zoho_refresh_token"
