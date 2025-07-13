@@ -521,11 +521,11 @@ def register_resources(mcp: FastMCP) -> None:
 
 ## Income Details
 - **Paid Invoices**: {len(paid_invoices)}
-- **Average Invoice**: ${total_income / len(paid_invoices):,.2f} (if any)
+- **Average Invoice**: ${total_income / len(paid_invoices):,.2f if paid_invoices else 0:,.2f}
 
 ## Expense Details
 - **Total Transactions**: {len(expenses)}
-- **Average Expense**: ${total_expenses / len(expenses):,.2f} (if any)
+- **Average Expense**: ${total_expenses / len(expenses):,.2f if expenses else 0:,.2f}
 
 ## Cash Position
 """
