@@ -6,7 +6,6 @@ This script tests real API endpoints with actual data to ensure they work correc
 
 import os
 import sys
-import json
 import time
 import requests
 from datetime import datetime, timedelta
