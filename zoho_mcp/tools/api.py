@@ -14,7 +14,7 @@ import asyncio
 import random
 from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -191,7 +191,7 @@ async def _handle_rate_limit_async(response: httpx.Response, attempt: int) -> fl
             # Try to parse as HTTP date
             try:
                 retry_date = datetime.strptime(retry_after_header, "%a, %d %b %Y %H:%M:%S GMT")
-                wait_seconds = (retry_date - datetime.utcnow()).total_seconds()
+                wait_seconds = (retry_date - datetime.now(timezone.utc)).total_seconds()
             except ValueError:
                 # Default to exponential backoff
                 wait_seconds = min(INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt), MAX_BACKOFF)
