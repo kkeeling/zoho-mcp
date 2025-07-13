@@ -3,7 +3,6 @@ Test suite for API enhancements: caching and rate limiting.
 """
 
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 
@@ -21,7 +20,6 @@ from zoho_mcp.tools.api import (
     _rate_limit_retry_after,
     MAX_RETRIES,
     INITIAL_BACKOFF,
-    MAX_BACKOFF,
     BACKOFF_MULTIPLIER,
 )
 
