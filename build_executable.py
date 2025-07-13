@@ -81,11 +81,23 @@ def build_executable():
     print("Build successful!")
     
     # Rename the output file with platform information
-    source_exe = Path('dist') / 'zoho-mcp-server'
-    if platform.system() == 'Windows':
-        source_exe = source_exe.with_suffix('.exe')
+    # Check for directory mode output first (dist/zoho-mcp-server/zoho-mcp-server)
+    dir_mode_exe = Path('dist') / 'zoho-mcp-server' / 'zoho-mcp-server'
+    onefile_exe = Path('dist') / 'zoho-mcp-server'
     
-    if source_exe.exists():
+    if platform.system() == 'Windows':
+        dir_mode_exe = dir_mode_exe.with_suffix('.exe')
+        onefile_exe = onefile_exe.with_suffix('.exe')
+    
+    # Determine which path exists
+    if dir_mode_exe.exists():
+        source_exe = dir_mode_exe
+    elif onefile_exe.exists():
+        source_exe = onefile_exe
+    else:
+        source_exe = None
+    
+    if source_exe:
         target_name = f"zoho-mcp-server-{platform_name}"
         if platform.system() == 'Windows':
             target_name += '.exe'
