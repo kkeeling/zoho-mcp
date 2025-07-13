@@ -64,6 +64,8 @@ jobs:
     
     - name: Create Release and Upload Assets
       run: |
+        set -euo pipefail
+        
         # Create the release
         gh release create ${{ github.ref_name }} \
           --title "Release ${{ github.ref_name }}" \
@@ -73,7 +75,7 @@ jobs:
         
         # Upload all artifacts
         for file in artifacts/*/zoho-mcp-server-*; do
-          echo "Uploading $file"
+          echo "Uploading \"$file\""
           gh release upload ${{ github.ref_name }} "$file" --clobber
         done
       env:
