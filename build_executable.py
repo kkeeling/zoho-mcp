@@ -12,7 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-def get_platform_name():
+def get_platform_name() -> str:
     """Get a standardized platform name for the binary."""
     system = platform.system().lower()
     machine = platform.machine().lower()
