@@ -3,7 +3,7 @@ Test suite for bulk operations functionality.
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from zoho_mcp.bulk_operations import (
     bulk_create_invoices,
