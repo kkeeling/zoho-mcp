@@ -9,9 +9,12 @@ import json
 import time
 import logging
 import uuid
+import hashlib
+import asyncio
+import random
 from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
-from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -32,6 +35,17 @@ TOKEN_CACHE_FILE = Path(settings.TOKEN_CACHE_PATH)
 API_BASE_URL = settings.ZOHO_API_BASE_URL
 AUTH_BASE_URL = settings.ZOHO_AUTH_BASE_URL
 ORG_ID = settings.ZOHO_ORGANIZATION_ID
+
+# Cache configuration
+CACHE_TTL = timedelta(minutes=5)  # 5-minute TTL
+_response_cache: Dict[str, Tuple[Dict[str, Any], datetime]] = {}
+
+# Rate limiting configuration
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1.0  # Initial backoff in seconds
+MAX_BACKOFF = 60.0  # Maximum backoff in seconds
+BACKOFF_MULTIPLIER = 2.0  # Exponential backoff multiplier
+_rate_limit_retry_after: Optional[datetime] = None  # Global rate limit retry time
 
 
 # Legacy error classes for backward compatibility
@@ -76,6 +90,145 @@ class ZohoRateLimitError(RateLimitError):
             message=message,
             details=details
         )
+
+
+def _generate_cache_key(method: str, endpoint: str, params: Optional[Dict[str, Any]], json_data: Optional[Dict[str, Any]]) -> str:
+    """
+    Generate a cache key for the API request.
+    
+    Args:
+        method: HTTP method
+        endpoint: API endpoint
+        params: Query parameters
+        json_data: JSON request body
+        
+    Returns:
+        A hash string to use as cache key
+    """
+    # Only cache GET requests
+    if method != "GET":
+        return ""
+    
+    # Create a unique key from method, endpoint, and params
+    key_parts = [
+        method,
+        endpoint,
+        json.dumps(params or {}, sort_keys=True),
+    ]
+    
+    key_string = "|".join(key_parts)
+    return hashlib.md5(key_string.encode()).hexdigest()
+
+
+def _get_cached_response(cache_key: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a cached response if it exists and is not expired.
+    
+    Args:
+        cache_key: The cache key
+        
+    Returns:
+        Cached response or None if not found/expired
+    """
+    if not cache_key or cache_key not in _response_cache:
+        return None
+    
+    response, expires_at = _response_cache[cache_key]
+    
+    # Check if cache has expired
+    if datetime.now() >= expires_at:
+        del _response_cache[cache_key]
+        return None
+    
+    logger.debug(f"Cache hit for key: {cache_key}")
+    return response
+
+
+def _set_cached_response(cache_key: str, response: Dict[str, Any]) -> None:
+    """
+    Store a response in the cache.
+    
+    Args:
+        cache_key: The cache key
+        response: The response to cache
+    """
+    if not cache_key:
+        return
+    
+    expires_at = datetime.now() + CACHE_TTL
+    _response_cache[cache_key] = (response, expires_at)
+    logger.debug(f"Cached response for key: {cache_key}, expires at: {expires_at}")
+
+
+def clear_cache() -> None:
+    """
+    Clear the entire response cache.
+    """
+    _response_cache.clear()
+    logger.info("Response cache cleared")
+
+
+async def _handle_rate_limit_async(response: httpx.Response, attempt: int) -> float:
+    """
+    Handle rate limit response and calculate backoff time.
+    
+    Args:
+        response: The HTTP response with 429 status
+        attempt: The current retry attempt number
+        
+    Returns:
+        The number of seconds to wait before retrying
+    """
+    global _rate_limit_retry_after
+    
+    # Check for Retry-After header
+    retry_after_header = response.headers.get("Retry-After")
+    if retry_after_header:
+        try:
+            # Try to parse as seconds
+            wait_seconds = float(retry_after_header)
+        except ValueError:
+            # Try to parse as HTTP date
+            try:
+                retry_date = datetime.strptime(retry_after_header, "%a, %d %b %Y %H:%M:%S GMT")
+                wait_seconds = (retry_date - datetime.now(timezone.utc)).total_seconds()
+            except ValueError:
+                # Default to exponential backoff
+                wait_seconds = min(INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt), MAX_BACKOFF)
+    else:
+        # Use exponential backoff with jitter
+        wait_seconds = min(INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt), MAX_BACKOFF)
+        # Add jitter (±25%)
+        jitter = wait_seconds * 0.25 * (2 * random.random() - 1)
+        wait_seconds += jitter
+    
+    # Update global rate limit retry time
+    _rate_limit_retry_after = datetime.now() + timedelta(seconds=wait_seconds)
+    
+    logger.warning(
+        f"Rate limit hit (attempt {attempt + 1}/{MAX_RETRIES}). "
+        f"Waiting {wait_seconds:.1f} seconds before retry."
+    )
+    
+    return wait_seconds
+
+
+def _check_global_rate_limit() -> Optional[float]:
+    """
+    Check if we're still in a global rate limit wait period.
+    
+    Returns:
+        Number of seconds to wait, or None if no wait needed
+    """
+    global _rate_limit_retry_after
+    
+    if _rate_limit_retry_after and datetime.now() < _rate_limit_retry_after:
+        wait_seconds = (_rate_limit_retry_after - datetime.now()).total_seconds()
+        return max(0, wait_seconds)
+    
+    # Clear the rate limit if it has expired
+    _rate_limit_retry_after = None
+    return None
 
 
 def _load_token_from_cache() -> Dict[str, Any]:
@@ -294,9 +447,32 @@ async def zoho_api_request_async(
     if params is None:
         params = {}
     
+    # Check global rate limit before making request
+    wait_time = _check_global_rate_limit()
+    if wait_time:
+        logger.info(f"Waiting {wait_time:.1f}s for global rate limit to expire")
+        await asyncio.sleep(wait_time)
+    
+    # Generate cache key for GET requests
+    cache_key = _generate_cache_key(method, endpoint, params, json_data)
+    
+    # Check cache for GET requests
+    if cache_key:
+        cached_response = _get_cached_response(cache_key)
+        if cached_response is not None:
+            logger.info(f"Returning cached response for {method} {endpoint}")
+            return cached_response
+    
     # Generate or use provided request ID for tracing
     req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
     set_request_context(request_id=req_id)
+    
+    # Convert user-friendly parameter values to API-expected values
+    if params and "sort_order" in params:
+        if params["sort_order"] == "ascending":
+            params["sort_order"] = "A"
+        elif params["sort_order"] == "descending":
+            params["sort_order"] = "D"
     
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:
@@ -332,47 +508,89 @@ async def zoho_api_request_async(
             if json_data is not None:
                 log_context["request_body"] = json_data
             
-            # Make the request
-            async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
-                response = await client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=request_headers,
-                )
-                
-                # Record response details
-                log_context["status_code"] = response.status_code
-                
-                # Check if the request was successful
-                if response.status_code >= 400:
-                    # If we get a 401 Unauthorized and retry_auth is True,
-                    # refresh the token and try again
-                    if response.status_code == 401 and retry_auth:
-                        logger.info("Received 401, refreshing token and retrying")
-                        _get_access_token(force_refresh=True)
-                        return await zoho_api_request_async(
-                            method, endpoint, params, json_data, headers,
-                            retry_auth=False, request_id=req_id
-                        )
-                    else:
-                        _handle_api_error(response)
-                
-                # Parse JSON response
+            # Implement retry logic with exponential backoff
+            attempt = 0
+            while attempt < MAX_RETRIES:
                 try:
-                    result = response.json()
-                    log_context["response_body"] = result
-                    return result
-                except Exception:  # Handle any JSON parsing errors
-                    # If the response is not JSON, return a dict with the text
-                    log_context["response_text"] = response.text
-                    if response.status_code == 204:  # No Content
-                        return {
-                            "status": "success",
-                            "message": "Operation completed successfully"
-                        }
-                    return {"text": response.text}
+                    # Make the request
+                    async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
+                        response = await client.request(
+                            method=method,
+                            url=url,
+                            params=params,
+                            json=json_data,
+                            headers=request_headers,
+                        )
+                        
+                        # Record response details
+                        log_context["status_code"] = response.status_code
+                        
+                        # Check if the request was successful
+                        if response.status_code >= 400:
+                            # Handle rate limiting (429)
+                            if response.status_code == 429:
+                                if attempt < MAX_RETRIES - 1:  # Don't wait on last attempt
+                                    wait_time = await _handle_rate_limit_async(response, attempt)
+                                    await asyncio.sleep(wait_time)
+                                    attempt += 1
+                                    continue  # Retry the request
+                                else:
+                                    # Final attempt failed, raise the error
+                                    _handle_api_error(response)
+                            
+                            # If we get a 401 Unauthorized and retry_auth is True,
+                            # refresh the token and try again
+                            elif response.status_code == 401 and retry_auth:
+                                logger.info("Received 401, refreshing token and retrying")
+                                _get_access_token(force_refresh=True)
+                                return await zoho_api_request_async(
+                                    method, endpoint, params, json_data, headers,
+                                    retry_auth=False, request_id=req_id
+                                )
+                            else:
+                                _handle_api_error(response)
+                        
+                        # Parse JSON response
+                        try:
+                            result = response.json()
+                            log_context["response_body"] = result
+                            
+                            # Cache successful GET responses
+                            if cache_key and response.status_code == 200:
+                                _set_cached_response(cache_key, result)
+                            
+                            return result
+                        except Exception:  # Handle any JSON parsing errors
+                            # If the response is not JSON, return a dict with the text
+                            log_context["response_text"] = response.text
+                            if response.status_code == 204:  # No Content
+                                result = {
+                                    "status": "success",
+                                    "message": "Operation completed successfully"
+                                }
+                                # Cache successful GET responses
+                                if cache_key:
+                                    _set_cached_response(cache_key, result)
+                                return result
+                            return {"text": response.text}
+                            
+                except httpx.HTTPStatusError:
+                    # This shouldn't happen as we handle status codes above
+                    raise
+                except (httpx.RequestError, httpx.TimeoutException) as e:
+                    # Network errors can be retried
+                    if attempt < MAX_RETRIES - 1:
+                        wait_time = min(INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt), MAX_BACKOFF)
+                        logger.warning(
+                            f"Request error (attempt {attempt + 1}/{MAX_RETRIES}): {str(e)}. "
+                            f"Retrying in {wait_time:.1f}s..."
+                        )
+                        await asyncio.sleep(wait_time)
+                        attempt += 1
+                        continue
+                    else:
+                        # Final attempt failed
+                        raise
                     
         except (httpx.RequestError, httpx.TimeoutException) as e:
             error_msg = f"Request error: {str(e)}"
@@ -413,6 +631,13 @@ def zoho_api_request(
     # Generate or use provided request ID for tracing
     req_id = request_id or f"zoho-{uuid.uuid4().hex[:8]}"
     set_request_context(request_id=req_id)
+    
+    # Convert user-friendly parameter values to API-expected values
+    if params and "sort_order" in params:
+        if params["sort_order"] == "ascending":
+            params["sort_order"] = "A"
+        elif params["sort_order"] == "descending":
+            params["sort_order"] = "D"
     
     # Add organization_id to every request
     if "organization_id" not in params and ORG_ID:

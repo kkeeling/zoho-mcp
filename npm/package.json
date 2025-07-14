@@ -1,0 +1,50 @@
+{
+  "name": "zoho-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Zoho Books integration - interact with Zoho Books through AI assistants",
+  "keywords": [
+    "mcp",
+    "zoho",
+    "zoho-books",
+    "ai",
+    "claude",
+    "model-context-protocol"
+  ],
+  "homepage": "https://github.com/kkeeling/zoho-mcp",
+  "bugs": {
+    "url": "https://github.com/kkeeling/zoho-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkeeling/zoho-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Keenan Keeling <kkeeling@gmail.com>",
+  "main": "index.js",
+  "bin": {
+    "zoho-mcp-server": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "postinstall.js",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

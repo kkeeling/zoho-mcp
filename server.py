@@ -15,6 +15,8 @@ from mcp.server.fastmcp import FastMCP
 
 from zoho_mcp.config import settings
 from zoho_mcp import tools
+from zoho_mcp.resources import register_resources
+from zoho_mcp.prompts import register_prompts
 from zoho_mcp.transport import (
     setup_argparser,
     configure_transport_from_args,
@@ -47,6 +49,8 @@ def register_tools(mcp_server: FastMCP) -> None:
     mcp_server.add_tool(tools.create_vendor)
     mcp_server.add_tool(tools.get_contact)
     mcp_server.add_tool(tools.delete_contact)
+    mcp_server.add_tool(tools.update_contact)
+    mcp_server.add_tool(tools.email_statement)
 
     # Register invoice management tools
     mcp_server.add_tool(tools.list_invoices)
@@ -55,12 +59,16 @@ def register_tools(mcp_server: FastMCP) -> None:
     mcp_server.add_tool(tools.email_invoice)
     mcp_server.add_tool(tools.mark_invoice_as_sent)
     mcp_server.add_tool(tools.void_invoice)
+    mcp_server.add_tool(tools.record_payment)
+    mcp_server.add_tool(tools.send_payment_reminder)
 
     # Register expense management tools
     mcp_server.add_tool(tools.list_expenses)
     mcp_server.add_tool(tools.create_expense)
     mcp_server.add_tool(tools.get_expense)
     mcp_server.add_tool(tools.update_expense)
+    mcp_server.add_tool(tools.categorize_expense)
+    mcp_server.add_tool(tools.upload_receipt)
 
     # Register item management tools
     mcp_server.add_tool(tools.list_items)
@@ -168,6 +176,14 @@ def main() -> None:
             # Register all tools
             logger.info("Registering MCP tools")
             register_tools(mcp_server)
+
+            # Register all resources
+            logger.info("Registering MCP resources")
+            register_resources(mcp_server)
+
+            # Register all prompt templates
+            logger.info("Registering MCP prompt templates")
+            register_prompts(mcp_server)
 
             # Configure and initialize the appropriate transport
             transport_type, config = configure_transport_from_args(args)

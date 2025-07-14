@@ -20,12 +20,12 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel, ValidationError
 from zoho_mcp.models.base import BaseResponse
-from zoho_mcp.tools.api import zoho_api_request
+from zoho_mcp.tools.api import zoho_api_request_async
 
 logger = logging.getLogger(__name__)
 
 
-def list_sales_orders(
+async def list_sales_orders(
     page: int = 1,
     page_size: int = 25,
     status: Optional[Literal["draft", "open", "void", "all"]] = None,
@@ -100,7 +100,7 @@ def list_sales_orders(
         params["date_end"] = date_range_end
     
     try:
-        response = zoho_api_request("GET", "/salesorders", params=params)
+        response = await zoho_api_request_async("GET", "/salesorders", params=params)
         
         # Basic response handling
         sales_orders = response.get("salesorders", [])
@@ -129,7 +129,7 @@ def list_sales_orders(
         raise
 
 
-def create_sales_order(
+async def create_sales_order(
     customer_id: str,
     line_items: List[Dict[str, Any]],
     date: Optional[Union[str, date]] = None,
@@ -269,7 +269,7 @@ def create_sales_order(
     data = {k: v for k, v in input_data.items() if v is not None}
     
     try:
-        response = zoho_api_request("POST", "/salesorders", json=data)
+        response = await zoho_api_request_async("POST", "/salesorders", json_data=data)
         
         # Parse the response
         salesorder = response.get("salesorder", {})
@@ -287,7 +287,7 @@ def create_sales_order(
         raise
 
 
-def get_sales_order(salesorder_id: str) -> Dict[str, Any]:
+async def get_sales_order(salesorder_id: str) -> Dict[str, Any]:
     """
     Get a sales order by ID from Zoho Books.
     
@@ -308,7 +308,7 @@ def get_sales_order(salesorder_id: str) -> Dict[str, Any]:
         raise ValueError("Invalid sales order ID")
     
     try:
-        response = zoho_api_request("GET", f"/salesorders/{salesorder_id}")
+        response = await zoho_api_request_async("GET", f"/salesorders/{salesorder_id}")
         
         # Parse the response
         salesorder = response.get("salesorder")
@@ -333,7 +333,7 @@ def get_sales_order(salesorder_id: str) -> Dict[str, Any]:
         raise
 
 
-def update_sales_order(
+async def update_sales_order(
     salesorder_id: str,
     customer_id: Optional[str] = None,
     line_items: Optional[List[Dict[str, Any]]] = None,
@@ -465,7 +465,7 @@ def update_sales_order(
     data = {k: v for k, v in input_data.items() if v is not None}
     
     try:
-        response = zoho_api_request("PUT", f"/salesorders/{salesorder_id}", json=data)
+        response = await zoho_api_request_async("PUT", f"/salesorders/{salesorder_id}", json_data=data)
         
         # Parse the response
         salesorder = response.get("salesorder", {})
@@ -483,7 +483,7 @@ def update_sales_order(
         raise
 
 
-def convert_to_invoice(
+async def convert_to_invoice(
     salesorder_id: str,
     ignore_auto_number_generation: Optional[bool] = None,
     invoice_number: Optional[str] = None,
@@ -547,7 +547,7 @@ def convert_to_invoice(
         if ignore_auto_number_generation is not None:
             params["ignore_auto_number_generation"] = str(ignore_auto_number_generation).lower()
         
-        response = zoho_api_request("POST", endpoint, params=params, json=data)
+        response = await zoho_api_request_async("POST", endpoint, params=params, json_data=data)
         
         # Parse the response
         invoice = response.get("invoice", {})
