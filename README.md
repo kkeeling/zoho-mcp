@@ -48,7 +48,7 @@ This MCP server enables AI assistants to interact with your Zoho Books data thro
 
 ## Installation Options
 
-### Option 1: Using npx (Simplest - No Installation Required)
+### Option 1: Using npx (Simplest - No Installation Required) -- PENDING!!! NOT WORKING YET!
 
 Configure Claude Desktop to use the server directly with npx:
 
@@ -76,7 +76,7 @@ Configure Claude Desktop to use the server directly with npx:
 
 That's it! No need to install Python or download anything manually.
 
-### Option 2: Using Docker (No Python Required)
+### Option 2: Using Docker (No Python Required) -- PENDING!!! NOT WORKING YET!
 
 ```json
 {
@@ -106,7 +106,7 @@ That's it! No need to install Python or download anything manually.
 }
 ```
 
-### Option 3: Local Development Setup
+### Option 3: Local Development Setup -- USE THIS FOR NOW!!
 
 If you want to modify the server or run it locally:
 
