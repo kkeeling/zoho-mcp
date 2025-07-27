@@ -48,35 +48,7 @@ This MCP server enables AI assistants to interact with your Zoho Books data thro
 
 ## Installation Options
 
-### Option 1: Using npx (Simplest - No Installation Required)
-
-Configure Claude Desktop to use the server directly with npx:
-
-**macOS/Linux:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-**Windows:** Edit `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "zoho-books": {
-      "command": "npx",
-      "args": ["zoho-mcp-server"],
-      "env": {
-        "ZOHO_CLIENT_ID": "your_client_id_here",
-        "ZOHO_CLIENT_SECRET": "your_client_secret_here",
-        "ZOHO_REFRESH_TOKEN": "your_refresh_token_here",
-        "ZOHO_ORGANIZATION_ID": "your_organization_id_here",
-        "ZOHO_REGION": "US"
-      }
-    }
-  }
-}
-```
-
-That's it! No need to install Python or download anything manually.
-
-### Option 2: Using Docker (No Python Required)
+### Option 1: Using Docker (No Python Required)
 
 ```json
 {
@@ -106,7 +78,7 @@ That's it! No need to install Python or download anything manually.
 }
 ```
 
-### Option 3: Local Development Setup
+### Option 2: Local Development Setup
 
 If you want to modify the server or run it locally:
 
@@ -291,13 +263,6 @@ pytest tests/test_invoice_tools.py
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## How It Works
-
-When you use `npx zoho-mcp-server`, it:
-1. Downloads the appropriate pre-built binary for your platform
-2. Runs it with your provided credentials
-3. No Python, no dependencies, no installation needed!
 
 ## Future Improvements
 
