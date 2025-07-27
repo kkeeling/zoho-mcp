@@ -18,3 +18,8 @@ __all__ = [
     "BulkOperationProgress",
     "create_progress_tracker"
 ]
+
+def main():
+    """Console script entry point for uvx compatibility."""
+    from .server import main as server_main
+    server_main()

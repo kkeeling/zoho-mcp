@@ -20,7 +20,7 @@ class BaseResponse(BaseModel):
 class PaginatedResponse(BaseModel, Generic[T]):
     """
     Generic model for paginated API responses.
-    
+
     Args:
         T: The type of items in the page.
     """

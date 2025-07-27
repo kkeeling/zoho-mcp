@@ -10,9 +10,15 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
-env_path = Path(__file__).parent.parent.parent / "config" / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=str(env_path))
+# First try the home directory location
+home_env_path = Path.home() / ".zoho-mcp" / ".env"
+# Then try the local project location for backward compatibility
+local_env_path = Path(__file__).parent.parent.parent / "config" / ".env"
+
+if home_env_path.exists():
+    load_dotenv(dotenv_path=str(home_env_path))
+elif local_env_path.exists():
+    load_dotenv(dotenv_path=str(local_env_path))
 else:
     # If no .env file exists, load from environment variables
     load_dotenv()
@@ -70,7 +76,7 @@ class Settings:
     # Token management
     TOKEN_CACHE_PATH: str = os.environ.get(
         "TOKEN_CACHE_PATH", 
-        str(Path(__file__).parent.parent.parent / "config" / ".token_cache")
+        str(Path.home() / ".zoho-mcp" / ".token_cache")
     )
     
     # Logging

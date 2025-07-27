@@ -13,7 +13,7 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 
 import httpx
 
@@ -212,7 +212,15 @@ def update_env_file(refresh_token: str) -> None:
         IOError: If unable to write to the .env file
     """
     # Determine the path to the .env file
-    env_path = Path(__file__).parent.parent / "config" / ".env"
+    # Try home directory first, fall back to local for backward compatibility
+    home_env_path = Path.home() / ".zoho-mcp" / ".env"
+    local_env_path = Path(__file__).parent.parent / "config" / ".env"
+    
+    # Use home directory if it exists or if no local .env exists
+    if home_env_path.parent.exists() or not local_env_path.exists():
+        env_path = home_env_path
+    else:
+        env_path = local_env_path
     
     # Create config directory if it doesn't exist
     env_path.parent.mkdir(parents=True, exist_ok=True)

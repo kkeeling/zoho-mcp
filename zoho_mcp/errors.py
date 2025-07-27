@@ -9,10 +9,8 @@ This module provides centralized error handling for the MCP server, including:
 """
 
 import logging
-import inspect
-import json
 import traceback
-from typing import Dict, Any, Optional, Tuple, Type, Union, List
+from typing import Dict, Any, Optional, Union, List
 
 from zoho_mcp.config import settings
 
@@ -22,9 +20,9 @@ logger = logging.getLogger("zoho_mcp.errors")
 # Base Error Classes
 class ZohoMCPError(Exception):
     """Base exception class for all Zoho MCP errors."""
-    
+
     def __init__(
-        self, 
+        self,
         message: str,
         code: str = "UNKNOWN_ERROR",
         status_code: int = 500,
@@ -35,7 +33,7 @@ class ZohoMCPError(Exception):
         self.status_code = status_code
         self.details = details or {}
         super().__init__(self.message)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the error to a dictionary for API responses."""
         result = {
@@ -48,7 +46,7 @@ class ZohoMCPError(Exception):
         if self.details:
             result["error"]["details"] = self.details
         return result
-    
+
     def to_mcp_error(self) -> Dict[str, Any]:
         """Convert the error to an MCP-compatible error response."""
         return {
@@ -65,7 +63,7 @@ class ZohoMCPError(Exception):
 class APIError(ZohoMCPError):
     """Error for API-related issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         code: str = "API_ERROR",
         status_code: int = 500,
@@ -77,7 +75,7 @@ class APIError(ZohoMCPError):
 class RateLimitError(APIError):
     """Error for rate limit exceeded issues."""
     def __init__(
-        self, 
+        self,
         message: str = "API rate limit exceeded. Please try again later.",
         details: Optional[Dict[str, Any]] = None
     ):
@@ -92,7 +90,7 @@ class RateLimitError(APIError):
 class AuthenticationError(APIError):
     """Error for authentication issues."""
     def __init__(
-        self, 
+        self,
         message: str = "Authentication failed. Please check your credentials.",
         details: Optional[Dict[str, Any]] = None
     ):
@@ -107,7 +105,7 @@ class AuthenticationError(APIError):
 class ResourceNotFoundError(APIError):
     """Error for resource not found issues."""
     def __init__(
-        self, 
+        self,
         resource_type: str,
         resource_id: Union[str, int],
         details: Optional[Dict[str, Any]] = None
@@ -125,7 +123,7 @@ class ResourceNotFoundError(APIError):
 class ValidationError(ZohoMCPError):
     """Error for validation issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         field_errors: Optional[Dict[str, str]] = None,
         details: Optional[Dict[str, Any]] = None
@@ -133,7 +131,7 @@ class ValidationError(ZohoMCPError):
         combined_details = details or {}
         if field_errors:
             combined_details["field_errors"] = field_errors
-            
+
         super().__init__(
             message=message,
             code="VALIDATION_ERROR",
@@ -146,7 +144,7 @@ class ValidationError(ZohoMCPError):
 class TransportError(ZohoMCPError):
     """Base error for transport-related issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         code: str = "TRANSPORT_ERROR",
         status_code: int = 500,
@@ -158,7 +156,7 @@ class TransportError(ZohoMCPError):
 class TransportConfigurationError(TransportError):
     """Error for transport configuration issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         details: Optional[Dict[str, Any]] = None
     ):
@@ -173,7 +171,7 @@ class TransportConfigurationError(TransportError):
 class TransportInitializationError(TransportError):
     """Error for transport initialization issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         details: Optional[Dict[str, Any]] = None
     ):
@@ -189,7 +187,7 @@ class TransportInitializationError(TransportError):
 class ConfigurationError(ZohoMCPError):
     """Error for configuration issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         details: Optional[Dict[str, Any]] = None
     ):
@@ -205,7 +203,7 @@ class ConfigurationError(ZohoMCPError):
 class ToolExecutionError(ZohoMCPError):
     """Error for tool execution issues."""
     def __init__(
-        self, 
+        self,
         message: str,
         tool_name: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None
@@ -213,7 +211,7 @@ class ToolExecutionError(ZohoMCPError):
         combined_details = details or {}
         if tool_name:
             combined_details["tool_name"] = tool_name
-            
+
         super().__init__(
             message=message,
             code="TOOL_EXECUTION_ERROR",
@@ -239,11 +237,11 @@ API_ERROR_MAP = {
 def map_http_status_to_error(status_code: int, message: Optional[str] = None) -> Dict[str, Any]:
     """
     Map HTTP status code to standard error response.
-    
+
     Args:
         status_code: HTTP status code
         message: Custom error message (optional)
-        
+
     Returns:
         Error dict with code, message, and status
     """
@@ -251,7 +249,7 @@ def map_http_status_to_error(status_code: int, message: Optional[str] = None) ->
         "code": "UNKNOWN_ERROR",
         "message": "An unknown error occurred"
     })
-    
+
     return {
         "code": error_info["code"],
         "message": message or error_info["message"],
@@ -262,10 +260,10 @@ def map_http_status_to_error(status_code: int, message: Optional[str] = None) ->
 def sanitize_error_message(message: str) -> str:
     """
     Sanitize error message to remove sensitive information.
-    
+
     Args:
         message: Raw error message
-        
+
     Returns:
         Sanitized error message
     """
@@ -284,21 +282,21 @@ def sanitize_error_message(message: str) -> str:
         (re.compile(r'"token":\s*"([^"]+)"'), r'"token": "REDACTED"'),
         # Add more patterns as needed
     ]
-    
+
     sanitized = message
     for pattern, replacement in sensitive_patterns:
         sanitized = pattern.sub(replacement, sanitized)
-    
+
     return sanitized
 
 
 def format_exception_for_log(exc: Exception) -> str:
     """
     Format exception for logging, with sensitive information redacted.
-    
+
     Args:
-        exc: Exception to format
-        
+        exc: Exception to forma
+
     Returns:
         Formatted exception string
     """
@@ -308,16 +306,16 @@ def format_exception_for_log(exc: Exception) -> str:
 
 
 def handle_exception(
-    exc: Exception, 
+    exc: Exception,
     log_exception: bool = True
 ) -> Dict[str, Any]:
     """
     Handle an exception and convert it to an MCP-compatible error response.
-    
+
     Args:
         exc: The exception to handle
         log_exception: Whether to log the exception
-        
+
     Returns:
         MCP-compatible error response dictionary
     """
@@ -331,39 +329,39 @@ def handle_exception(
             "message": "An internal error occurred",
             "data": {"status": 500}
         }
-        
+
         # In development mode, include more details
         if settings.LOG_LEVEL.upper() == "DEBUG":
             error_response["message"] = str(exc)
-    
+
     # Log the exception if requested
     if log_exception:
         logger.error(
-            f"Exception: {exc.__class__.__name__}: {sanitize_error_message(str(exc))}", 
+            f"Exception: {exc.__class__.__name__}: {sanitize_error_message(str(exc))}",
             exc_info=settings.LOG_LEVEL.upper() == "DEBUG"
         )
-    
+
     return error_response
 
 
 def validate_required_params(params: Dict[str, Any], required: List[str]) -> Optional[ValidationError]:
     """
     Validate that all required parameters are present.
-    
+
     Args:
         params: Dictionary of parameters
         required: List of required parameter names
-        
+
     Returns:
         ValidationError if any required parameters are missing, None otherwise
     """
     missing = [param for param in required if param not in params or params[param] is None]
-    
+
     if missing:
         field_errors = {param: "This field is required" for param in missing}
         return ValidationError(
             message=f"Missing required parameters: {', '.join(missing)}",
             field_errors=field_errors
         )
-    
+
     return None

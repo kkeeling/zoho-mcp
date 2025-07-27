@@ -13,3 +13,10 @@ dist/
 __pycache__/
 config/.token_cache
 .zoho_refresh_token
+
+# Python packaging
+*.egg-info/
+*.egg
+MANIFEST
+*.tar.gz
+*.whl

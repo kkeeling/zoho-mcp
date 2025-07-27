@@ -48,7 +48,50 @@ This MCP server enables AI assistants to interact with your Zoho Books data thro
 
 ## Installation Options
 
-### Option 1: Using Docker (No Python Required)
+### Option 1: Using uvx (Simplest - Recommended)
+
+If you have `uvx` installed, you can run the server directly without any installation:
+
+```bash
+# Run the server with STDIO transport (for Claude Desktop)
+uvx zoho-books-mcp --stdio
+
+# Or run OAuth setup
+uvx zoho-books-mcp --setup-oauth
+```
+
+### Option 2: Install from PyPI
+
+```bash
+# Install globally
+pip install zoho-books-mcp
+
+# Or install in a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install zoho-books-mcp
+```
+
+Then configure Claude Desktop:
+```json
+{
+  "mcpServers": {
+    "zoho-books": {
+      "command": "zoho-books-mcp",
+      "args": ["--stdio"],
+      "env": {
+        "ZOHO_CLIENT_ID": "your_client_id_here",
+        "ZOHO_CLIENT_SECRET": "your_client_secret_here",
+        "ZOHO_REFRESH_TOKEN": "your_refresh_token_here",
+        "ZOHO_ORGANIZATION_ID": "your_organization_id_here",
+        "ZOHO_REGION": "US"
+      }
+    }
+  }
+}
+```
+
+### Option 3: Using Docker (No Python Required)
 
 ```json
 {
@@ -78,7 +121,7 @@ This MCP server enables AI assistants to interact with your Zoho Books data thro
 }
 ```
 
-### Option 2: Local Development Setup
+### Option 4: Local Development Setup
 
 If you want to modify the server or run it locally:
 

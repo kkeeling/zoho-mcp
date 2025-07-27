@@ -52,7 +52,7 @@ _rate_limit_retry_after: Optional[datetime] = None  # Global rate limit retry ti
 class ZohoAPIError(APIError):
     """Exception raised for errors in the Zoho API responses."""
     def __init__(self, status_code: int, message: str, code: Optional[str] = None):
-        details = {"status_code": status_code}
+        details: Dict[str, Any] = {"status_code": status_code}
         if code:
             details["code"] = code
         super().__init__(
@@ -66,7 +66,7 @@ class ZohoAPIError(APIError):
 class ZohoAuthenticationError(AuthenticationError):
     """Exception raised for authentication errors."""
     def __init__(self, status_code: int, message: str, code: Optional[str] = None):
-        details = {"status_code": status_code}
+        details: Dict[str, Any] = {"status_code": status_code}
         if code:
             details["code"] = code
         super().__init__(
@@ -83,7 +83,7 @@ class ZohoRequestError(ZohoAPIError):
 class ZohoRateLimitError(RateLimitError):
     """Exception raised when rate limits are exceeded."""
     def __init__(self, status_code: int, message: str, code: Optional[str] = None):
-        details = {"status_code": status_code}
+        details: Dict[str, Any] = {"status_code": status_code}
         if code:
             details["code"] = code
         super().__init__(
@@ -117,7 +117,7 @@ def _generate_cache_key(method: str, endpoint: str, params: Optional[Dict[str, A
     ]
     
     key_string = "|".join(key_parts)
-    return hashlib.md5(key_string.encode()).hexdigest()
+    return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
 
 
 def _get_cached_response(cache_key: str) -> Optional[Dict[str, Any]]:
@@ -596,6 +596,9 @@ async def zoho_api_request_async(
             error_msg = f"Request error: {str(e)}"
             logger.error(error_msg)
             raise ZohoRequestError(500, error_msg)
+    
+    # Should never reach here, but adding for type checker
+    raise ZohoRequestError(500, "Unexpected error: max retries reached without proper handling")
 
 
 def zoho_api_request(

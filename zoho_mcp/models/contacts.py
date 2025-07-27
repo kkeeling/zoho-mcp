@@ -4,7 +4,7 @@ Contact-related models for Zoho Books MCP Integration Server.
 This module contains Pydantic models for contact operations (customers, vendors).
 """
 
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from .base import BaseResponse
@@ -40,19 +40,19 @@ class BaseContactInput(BaseModel):
     company_name: Optional[str] = Field(None, description="Company name if different from contact name")
     website: Optional[str] = Field(None, description="Website URL")
     notes: Optional[str] = Field(None, description="Notes about the contact")
-    
+
     # Contact details
     email: Optional[EmailStr] = Field(None, description="Primary email address")
     phone: Optional[str] = Field(None, description="Primary phone number")
     mobile: Optional[str] = Field(None, description="Mobile/cell phone number")
-    
+
     # Addresses
     billing_address: Optional[AddressInput] = Field(None, description="Billing address")
     shipping_address: Optional[AddressInput] = Field(None, description="Shipping address")
-    
+
     # Additional contacts
     contact_persons: Optional[List["ContactPersonInput"]] = Field(None, description="Additional contact persons")
-    
+
     # Custom fields
     custom_fields: Optional[Dict[str, Any]] = Field(
         None, description="Custom field values"
@@ -67,7 +67,7 @@ class CustomerInput(BaseContactInput):
     payment_terms_label: Optional[str] = Field(None, description="Label for payment terms")
     credit_limit: Optional[float] = Field(None, description="Credit limit amount")
     tax_id: Optional[str] = Field(None, description="Tax ID or VAT number")
-    
+
     @model_validator(mode='after')
     def check_required_fields(self) -> 'CustomerInput':
         """Ensure at least one of email or phone is provided."""

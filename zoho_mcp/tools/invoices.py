@@ -10,7 +10,6 @@ from datetime import date
 
 # Only used for type checking
 if TYPE_CHECKING:
-    from typing import TypedDict
     
     class MCPTool:
         """Type for an MCP tool function with metadata."""
@@ -20,7 +19,6 @@ if TYPE_CHECKING:
 
 from zoho_mcp.models.invoices import (
     CreateInvoiceInput,
-    GetInvoiceInput,
     InvoiceResponse,
     InvoicesListResponse,
 )
@@ -417,7 +415,7 @@ async def send_payment_reminder(
     logger.info(f"Sending payment reminder for invoice {invoice_id}")
     
     # Prepare data for API request
-    data = {}
+    data: Dict[str, Any] = {}
     
     if to_email:
         data["to_mail"] = to_email

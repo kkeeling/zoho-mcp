@@ -461,7 +461,7 @@ async def categorize_expense(
     logger.info(f"Categorizing expense {expense_id} with category {category_id}")
     
     # Prepare update data
-    data = {
+    data: Dict[str, Any] = {
         "expense_id": expense_id,
         "category_id": category_id,
     }
