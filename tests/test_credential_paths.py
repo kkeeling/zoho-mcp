@@ -48,48 +48,45 @@ class TestCredentialPaths:
     def test_update_env_file_backward_compatibility(self):
         """Test that update_env_file falls back to local config if it exists"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a mock local config directory with existing .env
-            local_config = Path(tmpdir) / "config"
+            # Create a mock project structure
+            project_root = Path(tmpdir) / "project"
+            zoho_mcp_dir = project_root / "zoho_mcp"
+            zoho_mcp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create auth_flow.py in the correct location
+            auth_flow_path = zoho_mcp_dir / "auth_flow.py"
+            auth_flow_path.touch()
+            
+            # Create local config directory with existing .env
+            local_config = project_root / "config"
             local_config.mkdir(parents=True, exist_ok=True)
             local_env = local_config / ".env"
-            local_env.write_text('EXISTING_VAR="existing_value"')
+            local_env.write_text('EXISTING_VAR="existing_value"\n')
             
-            # Mock the paths
-            with patch('zoho_mcp.auth_flow.Path') as mock_path_class:
-                # Create a mock for Path.home()
-                mock_home = MagicMock()
-                mock_home.return_value = Path("/fake/home")
-                mock_path_class.home = mock_home
-                
-                # Make __file__ resolve to our temp directory structure
-                mock_file_path = Path(tmpdir) / "zoho_mcp" / "auth_flow.py"
-                mock_path_class.return_value = mock_file_path
-                
-                # Set up the path resolution
-                def path_side_effect(arg):
-                    if arg == mock_file_path:
-                        return mock_file_path
-                    return Path(arg)
-                
-                mock_path_class.side_effect = path_side_effect
-                
-                # Mock home path to not exist
-                home_env_path = Path("/fake/home") / ".zoho-mcp" / ".env"
-                with patch.object(Path, 'exists') as mock_exists:
-                    def exists_side_effect(self):
-                        if str(self) == str(home_env_path.parent):
-                            return False
-                        elif str(self) == str(local_env):
-                            return True
-                        return False
+            # Create a fake home directory that doesn't have .zoho-mcp
+            fake_home = Path(tmpdir) / "fake_home"
+            fake_home.mkdir(parents=True, exist_ok=True)
+            
+            # Mock Path.home() and __file__
+            with patch('pathlib.Path.home', return_value=fake_home):
+                with patch('zoho_mcp.auth_flow.__file__', str(auth_flow_path)):
+                    # Call update_env_file
+                    test_token = "backward_compat_token_789"
+                    update_env_file(test_token)
                     
-                    mock_exists.side_effect = exists_side_effect
+                    # Verify that the local config path was used
+                    assert local_env.exists()
+                    content = local_env.read_text()
                     
-                    # This should use the local path due to backward compatibility
-                    # Note: This is a complex test - in practice, the actual logic
-                    # checks if home_env_path.parent.exists() or not local_env_path.exists()
-                    # For simplicity, we're testing the behavior conceptually
-                    pass
+                    # Verify the existing variable is preserved (quotes are stripped for values without spaces)
+                    assert 'EXISTING_VAR=existing_value' in content
+                    
+                    # Verify the new token was added
+                    assert f'ZOHO_REFRESH_TOKEN={test_token}' in content
+                    
+                    # Verify home directory was NOT used
+                    home_env = fake_home / ".zoho-mcp" / ".env"
+                    assert not home_env.exists()
     
     def test_env_file_preserves_existing_variables(self):
         """Test that updating env file preserves existing variables"""
