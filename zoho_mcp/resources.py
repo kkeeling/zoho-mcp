@@ -92,12 +92,6 @@ def register_resources(mcp: FastMCP) -> None:
         
         try:
             # Fetch overdue invoices
-            params = {
-                "status": "overdue",
-                "sort_column": "due_date",
-                "sort_order": "ascending",
-            }
-            
             invoices_response = await list_invoices(
                 status="overdue",
                 sort_column="due_date",
