@@ -2,27 +2,23 @@
 Tests for the server.py module.
 """
 
-import sys
 import unittest
 from unittest.mock import patch, MagicMock
-import argparse
 
-# Using path manipulation for imports from parent directory
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from server import main
+from zoho_mcp.server import main
+from zoho_mcp.errors import AuthenticationError
+from zoho_mcp.transport import TransportConfigurationError
 
 
 class TestServer(unittest.TestCase):
     """Tests for server.py functionality."""
     
-    @patch('server.setup_argparser')
-    @patch('server.configure_server')
-    @patch('server.FastMCP')
-    @patch('server.register_tools')
-    @patch('server.configure_transport_from_args')
-    @patch('server.initialize_transport')
+    @patch('zoho_mcp.server.setup_argparser')
+    @patch('zoho_mcp.server.configure_server')
+    @patch('zoho_mcp.server.FastMCP')
+    @patch('zoho_mcp.server.register_tools')
+    @patch('zoho_mcp.server.configure_transport_from_args')
+    @patch('zoho_mcp.server.initialize_transport')
     @patch('sys.exit')
     def test_normal_server_startup(self, mock_exit, mock_init_transport, mock_configure_transport, 
                                    mock_register_tools, mock_fastmcp, mock_configure_server, 
@@ -58,8 +54,8 @@ class TestServer(unittest.TestCase):
         mock_init_transport.assert_called_once()
         mock_exit.assert_not_called()  # Server should not exit in normal startup
     
-    @patch('server.setup_argparser')
-    @patch('zoho_mcp.auth_flow.run_oauth_flow')
+    @patch('zoho_mcp.server.setup_argparser')
+    @patch('zoho_mcp.server.run_oauth_flow')
     @patch('sys.exit')
     def test_oauth_setup_flow_success(self, mock_exit, mock_run_oauth_flow, mock_setup_argparser):
         """Test OAuth setup flow when --setup-oauth flag is provided (success case)."""
@@ -87,8 +83,8 @@ class TestServer(unittest.TestCase):
         mock_run_oauth_flow.assert_called_once_with(port=9999)
         mock_exit.assert_called_once_with(0)  # Should exit with success code
     
-    @patch('server.setup_argparser')
-    @patch('zoho_mcp.auth_flow.run_oauth_flow')
+    @patch('zoho_mcp.server.setup_argparser')
+    @patch('zoho_mcp.server.run_oauth_flow')
     @patch('sys.exit')
     def test_oauth_setup_flow_failure(self, mock_exit, mock_run_oauth_flow, mock_setup_argparser):
         """Test OAuth setup flow when --setup-oauth flag is provided (failure case)."""
@@ -104,7 +100,6 @@ class TestServer(unittest.TestCase):
         mock_setup_argparser.return_value = mock_parser
         
         # Mock OAuth flow that raises an AuthenticationError
-        from zoho_mcp.errors import AuthenticationError
         mock_run_oauth_flow.side_effect = AuthenticationError("OAuth test error")
         
         # Call main function
@@ -116,9 +111,9 @@ class TestServer(unittest.TestCase):
         mock_run_oauth_flow.assert_called_once_with(port=9999)
         mock_exit.assert_called_once_with(1)  # Should exit with error code
     
-    @patch('server.setup_argparser')
+    @patch('zoho_mcp.server.setup_argparser')
     @patch('sys.exit')
-    @patch('server.configure_transport_from_args')
+    @patch('zoho_mcp.server.configure_transport_from_args')
     def test_transport_configuration_error(self, mock_configure_transport, mock_exit, 
                                          mock_setup_argparser):
         """Test handling of TransportConfigurationError."""
@@ -133,7 +128,6 @@ class TestServer(unittest.TestCase):
         mock_setup_argparser.return_value = mock_parser
         
         # Mock configure_transport_from_args to raise TransportConfigurationError
-        from zoho_mcp.transport import TransportConfigurationError
         mock_configure_transport.side_effect = TransportConfigurationError("Test error")
         
         # Call main function

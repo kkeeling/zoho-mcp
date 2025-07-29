@@ -10,6 +10,7 @@ This module provides centralized error handling for the MCP server, including:
 
 import logging
 import traceback
+import re
 from typing import Dict, Any, Optional, Union, List
 
 from zoho_mcp.config import settings
@@ -257,6 +258,22 @@ def map_http_status_to_error(status_code: int, message: Optional[str] = None) ->
     }
 
 
+# Pre-compiled patterns for performance
+SENSITIVE_PATTERNS = [
+    (re.compile(r'client_id=([^&]+)'), r'client_id=REDACTED'),
+    (re.compile(r'client_secret=([^&]+)'), r'client_secret=REDACTED'),
+    (re.compile(r'Bearer ([^"\' \t]+)'), r'Bearer REDACTED'),
+    (re.compile(r'Zoho-oauthtoken ([^"\' \t]+)'), r'Zoho-oauthtoken REDACTED'),
+    (re.compile(r'refresh_token=([^&]+)'), r'refresh_token=REDACTED'),
+    (re.compile(r'access_token=([^&]+)'), r'access_token=REDACTED'),
+    (re.compile(r'Authorization: ([^"\'\n]+)'), r'Authorization: REDACTED'),
+    (re.compile(r'"password":\s*"([^"]+)"'), r'"password": "REDACTED"'),
+    (re.compile(r'"api_key":\s*"([^"]+)"'), r'"api_key": "REDACTED"'),
+    (re.compile(r'"token":\s*"([^"]+)"'), r'"token": "REDACTED"'),
+    # Add more patterns as needed
+]
+
+
 def sanitize_error_message(message: str) -> str:
     """
     Sanitize error message to remove sensitive information.
@@ -267,24 +284,8 @@ def sanitize_error_message(message: str) -> str:
     Returns:
         Sanitized error message
     """
-    # List of patterns to redact in error messages
-    import re
-    sensitive_patterns = [
-        (re.compile(r'client_id=([^&]+)'), r'client_id=REDACTED'),
-        (re.compile(r'client_secret=([^&]+)'), r'client_secret=REDACTED'),
-        (re.compile(r'Bearer ([^"\' \t]+)'), r'Bearer REDACTED'),
-        (re.compile(r'Zoho-oauthtoken ([^"\' \t]+)'), r'Zoho-oauthtoken REDACTED'),
-        (re.compile(r'refresh_token=([^&]+)'), r'refresh_token=REDACTED'),
-        (re.compile(r'access_token=([^&]+)'), r'access_token=REDACTED'),
-        (re.compile(r'Authorization: ([^"\'\n]+)'), r'Authorization: REDACTED'),
-        (re.compile(r'"password":\s*"([^"]+)"'), r'"password": "REDACTED"'),
-        (re.compile(r'"api_key":\s*"([^"]+)"'), r'"api_key": "REDACTED"'),
-        (re.compile(r'"token":\s*"([^"]+)"'), r'"token": "REDACTED"'),
-        # Add more patterns as needed
-    ]
-
     sanitized = message
-    for pattern, replacement in sensitive_patterns:
+    for pattern, replacement in SENSITIVE_PATTERNS:
         sanitized = pattern.sub(replacement, sanitized)
 
     return sanitized

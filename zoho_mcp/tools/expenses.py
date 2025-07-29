@@ -329,77 +329,56 @@ async def update_expense(
     """
     logger.info(f"Updating expense with ID: {expense_id}")
     
-    # First, get the current expense data
-    current_expense = await get_expense(expense_id)
-    if not current_expense.get("expense"):
-        raise ValueError(f"Expense with ID {expense_id} not found")
-    
-    # Prepare the update data, starting with the current expense
+    # Prepare the update data with only the fields that are being updated
     data: Dict[str, Any] = {}
     
-    # Add required fields from the current expense or new values
+    # Add expense_id
     data["expense_id"] = expense_id
-    data["account_id"] = account_id or current_expense["expense"]["account_id"]
-    data["paid_through_account_id"] = paid_through_account_id or current_expense["expense"].get("paid_through_account_id")
     
-    # Required fields with potential updates
+    # Add fields only if they are provided
+    if account_id is not None:
+        data["account_id"] = account_id
+    
+    if paid_through_account_id is not None:
+        data["paid_through_account_id"] = paid_through_account_id
+    
     if amount is not None:
         data["amount"] = amount
-    else:
-        data["amount"] = current_expense["expense"]["amount"]
     
     # Format the date if provided
-    if date:
+    if date is not None:
         if isinstance(date, datetime.date):
             data["date"] = date.isoformat()
         else:
             data["date"] = date
-    else:
-        data["date"] = current_expense["expense"]["date"]
     
-    # Add optional fields if provided or use current values
+    # Add optional fields if provided
     if is_billable is not None:
         data["is_billable"] = is_billable
-    elif "is_billable" in current_expense["expense"]:
-        data["is_billable"] = current_expense["expense"]["is_billable"]
         
-    if vendor_id:
+    if vendor_id is not None:
         data["vendor_id"] = vendor_id
-    elif "vendor_id" in current_expense["expense"]:
-        data["vendor_id"] = current_expense["expense"]["vendor_id"]
         
-    if customer_id:
+    if customer_id is not None:
         data["customer_id"] = customer_id
-    elif "customer_id" in current_expense["expense"]:
-        data["customer_id"] = current_expense["expense"]["customer_id"]
         
-    if currency_id:
+    if currency_id is not None:
         data["currency_id"] = currency_id
-    elif "currency_id" in current_expense["expense"]:
-        data["currency_id"] = current_expense["expense"]["currency_id"]
         
     if exchange_rate is not None:
         data["exchange_rate"] = exchange_rate
-    elif "exchange_rate" in current_expense["expense"]:
-        data["exchange_rate"] = current_expense["expense"]["exchange_rate"]
         
-    if tax_id:
+    if tax_id is not None:
         data["tax_id"] = tax_id
-    elif "tax_id" in current_expense["expense"]:
-        data["tax_id"] = current_expense["expense"]["tax_id"]
         
-    if reference_number:
+    if reference_number is not None:
         data["reference_number"] = reference_number
-    elif "reference_number" in current_expense["expense"]:
-        data["reference_number"] = current_expense["expense"]["reference_number"]
         
-    if description:
+    if description is not None:
         data["description"] = description
-    elif "description" in current_expense["expense"]:
-        data["description"] = current_expense["expense"]["description"]
     
     # Add line items if provided
-    if line_items:
+    if line_items is not None:
         # Validate line items
         validated_items = []
         for item in line_items:
@@ -412,8 +391,6 @@ async def update_expense(
         
         if validated_items:
             data["line_items"] = validated_items
-    elif "line_items" in current_expense["expense"]:
-        data["line_items"] = current_expense["expense"]["line_items"]
     
     # Add custom fields if any
     if custom_fields:
@@ -507,46 +484,7 @@ async def upload_receipt(
     Raises:
         Exception: If the API request fails or file not found
     """
-    import os
-    from pathlib import Path
-    
-    logger.info(f"Uploading receipt for expense {expense_id} from {receipt_file_path}")
-    
-    # Validate file exists
-    if not os.path.exists(receipt_file_path):
-        raise ValueError(f"Receipt file not found: {receipt_file_path}")
-    
-    # Get file name
-    if not file_name:
-        file_name = Path(receipt_file_path).name
-    
-    # For the MVP, we'll simulate the upload since file uploads require special handling
-    # In production, this would use multipart form data
-    logger.warning("Receipt upload is simulated in MVP - actual file upload requires multipart form implementation")
-    
-    # Prepare metadata for the receipt
-    data = {
-        "file_name": file_name,
-        "file_size": os.path.getsize(receipt_file_path),
-    }
-    
-    try:
-        # In production, this would be a multipart upload to /expenses/{expense_id}/receipt
-        # For now, we'll update the expense with receipt metadata
-        response = await zoho_api_request_async("POST", f"/expenses/{expense_id}/receipt", json_data=data)
-        
-        logger.info(f"Receipt uploaded successfully for expense: {expense_id}")
-        
-        return {
-            "success": True,
-            "message": response.get("message", "Receipt uploaded successfully"),
-            "expense_id": expense_id,
-            "file_name": file_name,
-        }
-        
-    except Exception as e:
-        logger.error(f"Error uploading receipt: {str(e)}")
-        raise
+    raise NotImplementedError("Receipt upload functionality is not yet implemented")
 
 
 # Define metadata for tools that can be used by the MCP server

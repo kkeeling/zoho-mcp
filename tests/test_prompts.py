@@ -3,6 +3,7 @@ Test suite for Zoho Books MCP prompt templates.
 """
 
 import pytest
+import asyncio
 from unittest.mock import MagicMock
 
 from mcp.server.fastmcp import FastMCP
@@ -45,7 +46,6 @@ class TestPrompts:
     async def test_invoice_collection_workflow_prompt(self):
         """Test the invoice collection workflow prompt."""
         # Create and test the prompt
-        from zoho_mcp.prompts import register_prompts
         mcp = FastMCP(name="test", version="1.0.0")
         register_prompts(mcp)
         
@@ -91,7 +91,6 @@ class TestPrompts:
     async def test_monthly_invoicing_prompt(self):
         """Test the monthly invoicing workflow prompt."""
         # Create and test the prompt
-        from zoho_mcp.prompts import register_prompts
         mcp = FastMCP(name="test", version="1.0.0")
         register_prompts(mcp)
         
@@ -133,7 +132,6 @@ class TestPrompts:
     async def test_expense_tracking_workflow_prompt(self):
         """Test the expense tracking workflow prompt."""
         # Create and test the prompt
-        from zoho_mcp.prompts import register_prompts
         mcp = FastMCP(name="test", version="1.0.0")
         register_prompts(mcp)
         
@@ -181,14 +179,12 @@ class TestPrompts:
     def test_prompt_arguments_structure(self):
         """Test that all prompt arguments have the correct structure."""
         # Create and test the prompts
-        from zoho_mcp.prompts import register_prompts
         mcp = FastMCP(name="test", version="1.0.0")
         register_prompts(mcp)
         
         # Check each prompt's arguments
         for prompt_name, func in mcp._prompts.items():
             # Call the function asynchronously
-            import asyncio
             prompt = asyncio.run(func())
             
             # Check each argument
@@ -203,14 +199,12 @@ class TestPrompts:
     def test_prompt_messages_content(self):
         """Test that all prompt messages have valid TextContent."""
         # Create and test the prompts
-        from zoho_mcp.prompts import register_prompts
         mcp = FastMCP(name="test", version="1.0.0")
         register_prompts(mcp)
         
         # Check each prompt's messages
         for prompt_name, func in mcp._prompts.items():
             # Call the function asynchronously
-            import asyncio
             prompt = asyncio.run(func())
             
             # Check each message

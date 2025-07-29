@@ -26,6 +26,7 @@ from .transport import (
 )
 from .errors import ZohoMCPError, handle_exception, AuthenticationError
 from .logging import setup_logging, request_logging_context
+from .auth_flow import run_oauth_flow
 
 # Initialize logging early in startup process
 setup_logging(
@@ -133,9 +134,6 @@ def main() -> None:
 
             # Check for OAuth setup early in the process
             if hasattr(args, 'setup_oauth') and args.setup_oauth:
-                # Import auth_flow module only when needed
-                from .auth_flow import run_oauth_flow
-
                 logger.info("Starting OAuth setup flow")
                 print("\n=== Zoho Books OAuth Setup ===\n")
 

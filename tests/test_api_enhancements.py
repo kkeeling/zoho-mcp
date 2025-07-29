@@ -17,11 +17,11 @@ from zoho_mcp.tools.api import (
     _check_global_rate_limit,
     zoho_api_request_async,
     _response_cache,
-    _rate_limit_retry_after,
     MAX_RETRIES,
     INITIAL_BACKOFF,
     BACKOFF_MULTIPLIER,
 )
+import zoho_mcp.tools.api as api_module
 
 
 class TestCaching:
@@ -131,8 +131,7 @@ class TestRateLimiting:
     
     def setup_method(self):
         """Reset rate limit state before each test."""
-        global _rate_limit_retry_after
-        _rate_limit_retry_after = None
+        api_module._rate_limit_retry_after = None
     
     @pytest.mark.asyncio
     async def test_handle_rate_limit_with_retry_after_header(self):
@@ -147,8 +146,8 @@ class TestRateLimiting:
         assert wait_time == 5.0
         
         # Global rate limit should be set
-        assert _rate_limit_retry_after is not None
-        assert _rate_limit_retry_after > datetime.now()
+        assert api_module._rate_limit_retry_after is not None
+        assert api_module._rate_limit_retry_after > datetime.now()
     
     @pytest.mark.asyncio
     async def test_handle_rate_limit_with_exponential_backoff(self):
@@ -171,21 +170,19 @@ class TestRateLimiting:
     
     def test_check_global_rate_limit(self):
         """Test global rate limit checking."""
-        global _rate_limit_retry_after
-        
         # No rate limit set
         assert _check_global_rate_limit() is None
         
         # Set future rate limit
-        _rate_limit_retry_after = datetime.now() + timedelta(seconds=5)
+        api_module._rate_limit_retry_after = datetime.now() + timedelta(seconds=5)
         wait_time = _check_global_rate_limit()
         assert wait_time is not None
         assert 4 < wait_time <= 5
         
         # Set past rate limit
-        _rate_limit_retry_after = datetime.now() - timedelta(seconds=1)
+        api_module._rate_limit_retry_after = datetime.now() - timedelta(seconds=1)
         assert _check_global_rate_limit() is None
-        assert _rate_limit_retry_after is None  # Should be cleared
+        assert api_module._rate_limit_retry_after is None  # Should be cleared
     
     @pytest.mark.asyncio
     async def test_rate_limit_retry_in_api_request(self):

@@ -17,6 +17,7 @@ import traceback
 import re
 import time
 import threading
+import platform
 from contextlib import contextmanager
 from typing import Dict, Any, Optional, Union, List, Generator
 
@@ -184,7 +185,6 @@ def setup_logging(
     logger.info(f"Logging initialized at level {log_level}")
 
     # Log Python version and platform info at DEBUG level
-    import platform
     logger.debug(f"Python {platform.python_version()} on {platform.platform()}")
 
 
@@ -232,17 +232,27 @@ def request_logging_context(
     Yields:
         None
     """
-    # Set context variables
+    # Use a sentinel to distinguish between None and not-set
+    _sentinel = object()
+    
+    # Save original values
+    original_values = {}
     for key, value in context_vars.items():
+        original_values[key] = getattr(_request_context, key, _sentinel)
         setattr(_request_context, key, value)
 
     try:
         yield
     finally:
-        # Clear context variables
-        for key in context_vars:
-            if hasattr(_request_context, key):
-                delattr(_request_context, key)
+        # Restore original values
+        for key, original_value in original_values.items():
+            if original_value is _sentinel:
+                # Attribute didn't exist before, remove it
+                if hasattr(_request_context, key):
+                    delattr(_request_context, key)
+            else:
+                # Restore original value (could be None)
+                setattr(_request_context, key, original_value)
 
 
 def sanitize_request_data(data: Any) -> Any:
@@ -359,13 +369,15 @@ def log_tool_execution(
     start_time = time.time()
 
     # Set the tool name in request context for log filtering
-    original_tool_name = getattr(_request_context, 'tool_name', None)
+    # Use a sentinel to distinguish between None and not-set
+    _sentinel = object()
+    original_tool_name = getattr(_request_context, 'tool_name', _sentinel)
     _request_context.tool_name = tool_name
 
     # Set any additional context variables
     original_context = {}
     for key, value in context_vars.items():
-        original_context[key] = getattr(_request_context, key, None)
+        original_context[key] = getattr(_request_context, key, _sentinel)
         setattr(_request_context, key, value)
 
     logger.info(f"Tool execution started: {tool_name}")
@@ -390,14 +402,20 @@ def log_tool_execution(
         )
         raise
     finally:
-        # Restore original contex
-        if original_tool_name is not None:
-            _request_context.tool_name = original_tool_name
+        # Restore original context
+        if original_tool_name is _sentinel:
+            # Attribute didn't exist before, remove it
+            if hasattr(_request_context, 'tool_name'):
+                delattr(_request_context, 'tool_name')
         else:
-            delattr(_request_context, 'tool_name')
+            # Restore original value (could be None)
+            _request_context.tool_name = original_tool_name
 
         for key, value in original_context.items():
-            if value is not None:
-                setattr(_request_context, key, value)
+            if value is _sentinel:
+                # Attribute didn't exist before, remove it
+                if hasattr(_request_context, key):
+                    delattr(_request_context, key)
             else:
-                delattr(_request_context, key)
+                # Restore original value (could be None)
+                setattr(_request_context, key, value)
