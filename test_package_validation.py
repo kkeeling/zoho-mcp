@@ -127,8 +127,6 @@ def test_credential_paths():
     except Exception as e:
         print(f"❌ Error testing credential paths: {e}")
         return False
-    
-    return True
 
 def test_version_management():
     """Test 5: Check version management"""
