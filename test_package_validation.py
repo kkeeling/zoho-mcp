@@ -153,7 +153,7 @@ def test_version_management():
             print(f"✅ Package version accessible: {zoho_mcp.__version__}")
         else:
             print("⚠️  Package version not accessible via __version__ (optional)")
-    except:
+    except Exception as e:
         pass
     
     return True
