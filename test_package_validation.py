@@ -6,14 +6,10 @@ Test script to validate package installation and functionality
 import subprocess
 import sys
 import os
-import tempfile
-import unittest.mock
-from pathlib import Path
 import zoho_mcp
 import zoho_mcp.server
 import zoho_mcp.tools
 import zoho_mcp.config
-from zoho_mcp.config.settings import Settings
 
 def run_command(cmd, capture_output=True):
     """Run a command and return the result"""

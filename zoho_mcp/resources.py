@@ -7,11 +7,7 @@ through the MCP protocol using URI patterns.
 
 import logging
 from datetime import datetime, timedelta
-from typing import List
-
 from mcp.server.fastmcp import FastMCP
-from mcp.types import Resource
-from pydantic import AnyUrl
 
 from zoho_mcp.tools.api import zoho_api_request_async
 from zoho_mcp.tools import list_invoices

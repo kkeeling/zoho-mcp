@@ -2,22 +2,9 @@
 Tests for the transport configuration module.
 """
 
-import os
-import sys
 import argparse
 import unittest
 from unittest.mock import patch, MagicMock
-
-from mcp.server.fastmcp import FastMCP
-from mcp.server.stdio import stdio_server
-from mcp.server.websocket import websocket_server
-
-# These are mocked in the tests
-import anyio
-import uvicorn
-from starlette.applications import Starlette
-from starlette.routing import Mount, Route
-from mcp.server.sse import SseServerTransport
 
 from zoho_mcp.config import settings
 from zoho_mcp.transport import (
