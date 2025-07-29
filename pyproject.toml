@@ -33,7 +33,6 @@ dependencies = [
     "email-validator>=2.0.0",
     "structlog>=23.1.0",
     "click>=8.1.0",
-    "asyncio>=3.4.3",
     "anyio>=3.7.0",
     "starlette>=0.27.0",
     "uvicorn>=0.23.0",
