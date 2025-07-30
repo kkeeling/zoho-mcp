@@ -5,7 +5,7 @@ Tests for credential path changes to use ~/.zoho-mcp/
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from zoho_mcp.config.settings import Settings
 from zoho_mcp.auth_flow import update_env_file
