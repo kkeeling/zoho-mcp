@@ -203,7 +203,7 @@ def register_resources(mcp: FastMCP) -> None:
                 "date_start": start_date.strftime("%Y-%m-%d"),
                 "date_end": end_date.strftime("%Y-%m-%d"),
                 "sort_column": "date",
-                "sort_order": "D",
+                "sort_order": "descending",
             }
             
             payments_response = await zoho_api_request_async("GET", "/customerpayments", params=params)
