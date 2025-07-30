@@ -6,7 +6,6 @@ import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import pytest
 
 from zoho_mcp.config.settings import Settings
 from zoho_mcp.auth_flow import update_env_file
