@@ -9,7 +9,6 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 # Only used for type checking
 if TYPE_CHECKING:
-    from typing import TypedDict
     
     class MCPTool:
         """Type for an MCP tool function with metadata."""

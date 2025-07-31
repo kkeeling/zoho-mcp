@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zoho-books-mcp"
+version = "0.1.0"
+description = "Connect your Zoho Books account to AI assistants like Claude Desktop through the Model Context Protocol (MCP)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Keenan Keeling", email = "keenan@example.com"},
+]
+keywords = ["zoho", "books", "mcp", "model-context-protocol", "claude", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+dependencies = [
+    "mcp>=1.6.0",
+    "httpx>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.4.0",
+    "email-validator>=2.0.0",
+    "structlog>=23.1.0",
+    "click>=8.1.0",
+    "anyio>=3.7.0",
+    "starlette>=0.27.0",
+    "uvicorn>=0.23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-httpx>=0.25.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+zoho-books-mcp = "zoho_mcp:main"
+
+[project.urls]
+Repository = "https://github.com/kkeeling/zoho-mcp"
+Issues = "https://github.com/kkeeling/zoho-mcp/issues"
+Documentation = "https://github.com/kkeeling/zoho-mcp#readme"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zoho_mcp"]

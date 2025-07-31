@@ -13,19 +13,20 @@ from typing import Dict, Any
 
 from mcp.server.fastmcp import FastMCP
 
-from zoho_mcp.config import settings
-from zoho_mcp import tools
-from zoho_mcp.resources import register_resources
-from zoho_mcp.prompts import register_prompts
-from zoho_mcp.transport import (
+from .config import settings
+from . import tools
+from .resources import register_resources
+from .prompts import register_prompts
+from .transport import (
     setup_argparser,
     configure_transport_from_args,
     initialize_transport,
     TransportConfigurationError,
     TransportInitializationError
 )
-from zoho_mcp.errors import ZohoMCPError, handle_exception, AuthenticationError
-from zoho_mcp.logging import setup_logging, request_logging_context
+from .errors import ZohoMCPError, handle_exception, AuthenticationError
+from .logging import setup_logging, request_logging_context
+from .auth_flow import run_oauth_flow
 
 # Initialize logging early in startup process
 setup_logging(
@@ -133,9 +134,6 @@ def main() -> None:
 
             # Check for OAuth setup early in the process
             if hasattr(args, 'setup_oauth') and args.setup_oauth:
-                # Import auth_flow module only when needed
-                from zoho_mcp.auth_flow import run_oauth_flow
-
                 logger.info("Starting OAuth setup flow")
                 print("\n=== Zoho Books OAuth Setup ===\n")
 

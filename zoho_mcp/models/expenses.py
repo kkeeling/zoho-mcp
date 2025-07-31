@@ -17,7 +17,7 @@ class ExpenseLineItem(BaseModel):
     tax_name: Optional[str] = Field(None, description="Name of the tax (if tax_id not provided)")
     tax_percentage: Optional[float] = Field(None, ge=0, description="Tax percentage")
     description: Optional[str] = Field(None, description="Description of the expense item")
-    
+
     @model_validator(mode='after')
     def validate_tax(self) -> 'ExpenseLineItem':
         """Ensure tax information is consistent."""

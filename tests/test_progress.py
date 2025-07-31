@@ -12,6 +12,7 @@ from zoho_mcp.progress import (
     BulkOperationProgress,
     create_progress_tracker,
 )
+from zoho_mcp.bulk_operations import bulk_create_invoices
 
 
 class TestProgressTracker:
@@ -221,8 +222,6 @@ class TestBulkOperations:
     @pytest.mark.asyncio
     async def test_bulk_create_invoices(self):
         """Test bulk invoice creation with progress tracking."""
-        from zoho_mcp.bulk_operations import bulk_create_invoices
-        
         # Mock the create_invoice function
         with patch("zoho_mcp.bulk_operations.create_invoice") as mock_create:
             mock_create.return_value = {
@@ -255,8 +254,6 @@ class TestBulkOperations:
     @pytest.mark.asyncio
     async def test_bulk_create_invoices_with_failures(self):
         """Test bulk invoice creation with some failures."""
-        from zoho_mcp.bulk_operations import bulk_create_invoices
-        
         # Mock the create_invoice function to fail on second call
         with patch("zoho_mcp.bulk_operations.create_invoice") as mock_create:
             mock_create.side_effect = [

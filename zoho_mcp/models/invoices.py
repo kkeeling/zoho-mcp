@@ -32,7 +32,7 @@ class InvoiceLineItem(BaseModel):
         if not self.item_id and not self.name:
             raise ValueError("Either item_id or name must be provided")
         return self
-        
+
     @model_validator(mode='after')
     def validate_tax(self) -> 'InvoiceLineItem':
         """Ensure tax information is consistent."""
@@ -59,7 +59,7 @@ class CreateInvoiceInput(BaseModel):
     )
     notes: Optional[str] = Field(None, description="Notes to be displayed on the invoice")
     terms: Optional[str] = Field(None, description="Terms and conditions")
-    
+
     # Optional flags and settings
     payment_terms: Optional[int] = Field(None, description="Payment terms in days")
     payment_terms_label: Optional[str] = Field(None, description="Label for payment terms")

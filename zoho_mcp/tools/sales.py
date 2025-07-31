@@ -193,7 +193,7 @@ async def create_sales_order(
     logger.info(f"Creating sales order for customer: {customer_id}")
     
     # Prepare input data
-    input_data = {
+    input_data: Dict[str, Any] = {
         "customer_id": customer_id,
         "line_items": line_items,
     }
@@ -259,10 +259,12 @@ async def create_sales_order(
         if not (item.get('item_id') or item.get('name')):
             raise ValueError("Each line item must have either item_id or name")
         
-        if not item.get('rate') or not isinstance(item.get('rate'), (int, float)) or item.get('rate') <= 0:
+        rate = item.get('rate')
+        if not rate or not isinstance(rate, (int, float)) or rate <= 0:
             raise ValueError("Each line item must have a positive rate")
         
-        if not item.get('quantity') or not isinstance(item.get('quantity'), (int, float)) or item.get('quantity') <= 0:
+        quantity = item.get('quantity')
+        if not quantity or not isinstance(quantity, (int, float)) or quantity <= 0:
             raise ValueError("Each line item must have a positive quantity")
     
     # Prepare data for API request - filter out None values
@@ -404,7 +406,7 @@ async def update_sales_order(
         raise ValueError("Invalid sales order ID")
     
     # Prepare input data with provided fields
-    input_data = {}
+    input_data: Dict[str, Any] = {}
     
     # Add fields only if they are provided (not None)
     if customer_id is not None:
@@ -511,7 +513,7 @@ async def convert_to_invoice(
     logger.info(f"Converting sales order to invoice: {salesorder_id}")
     
     # Prepare input data
-    input_data = {
+    input_data: Dict[str, Any] = {
         "salesorder_id": salesorder_id,
     }
     

@@ -4,7 +4,7 @@ Sales order-related models for Zoho Books MCP Integration Server.
 This module contains Pydantic models for sales order operations.
 """
 
-from datetime import date
+from datetime import date as DateType
 from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field, model_validator
 
@@ -27,14 +27,14 @@ class SalesOrderLineItem(BaseModel):
     tax_percentage: Optional[float] = Field(None, ge=0, description="Tax percentage")
     line_item_id: Optional[str] = Field(None, description="ID of the line item (for updating)")
     location_id: Optional[str] = Field(None, description="Location ID for inventory management")
-    
+
     @model_validator(mode='after')
     def validate_item(self) -> 'SalesOrderLineItem':
         """Ensure either item_id or name is provided."""
         if not self.item_id and not self.name:
             raise ValueError("Either item_id or name must be provided")
         return self
-        
+
     @model_validator(mode='after')
     def validate_tax(self) -> 'SalesOrderLineItem':
         """Ensure tax information is consistent."""
@@ -62,10 +62,10 @@ class CreateSalesOrderInput(BaseModel):
     customer_id: str = Field(..., description="ID of the customer")
     salesorder_number: Optional[str] = Field(None, description="Custom sales order number (system-generated if omitted)")
     reference_number: Optional[str] = Field(None, description="Reference number")
-    date: Optional[Union[str, date]] = Field(
+    date: Optional[Union[str, DateType]] = Field(
         None, description="Sales order date (YYYY-MM-DD, default: current date)"
     )
-    shipment_date: Optional[Union[str, date]] = Field(
+    shipment_date: Optional[Union[str, DateType]] = Field(
         None, description="Expected shipment date (YYYY-MM-DD)"
     )
     line_items: List[SalesOrderLineItem] = Field(
@@ -73,7 +73,7 @@ class CreateSalesOrderInput(BaseModel):
     )
     notes: Optional[str] = Field(None, description="Notes to be displayed on the sales order")
     terms: Optional[str] = Field(None, description="Terms and conditions")
-    
+
     # Optional fields
     contact_persons: Optional[List[str]] = Field(None, description="IDs of contact persons")
     currency_id: Optional[str] = Field(None, description="ID of the currency")
@@ -86,11 +86,11 @@ class CreateSalesOrderInput(BaseModel):
     shipping_charge: Optional[float] = Field(None, ge=0, description="Shipping charge")
     adjustment: Optional[float] = Field(None, description="Adjustment amount")
     adjustment_description: Optional[str] = Field(None, description="Description for the adjustment")
-    
+
     # Address fields
     billing_address: Optional[Address] = Field(None, description="Billing address")
     shipping_address: Optional[Address] = Field(None, description="Shipping address")
-    
+
     # Other fields
     custom_fields: Optional[Dict[str, Any]] = Field(None, description="Custom field values")
     salesperson_id: Optional[str] = Field(None, description="ID of the salesperson")
@@ -104,14 +104,14 @@ class UpdateSalesOrderInput(BaseModel):
     customer_id: Optional[str] = Field(None, description="ID of the customer")
     salesorder_number: Optional[str] = Field(None, description="Custom sales order number")
     reference_number: Optional[str] = Field(None, description="Reference number")
-    date: Optional[Union[str, date]] = Field(None, description="Sales order date (YYYY-MM-DD)")
-    shipment_date: Optional[Union[str, date]] = Field(None, description="Expected shipment date (YYYY-MM-DD)")
+    date: Optional[Union[str, DateType]] = Field(None, description="Sales order date (YYYY-MM-DD)")
+    shipment_date: Optional[Union[str, DateType]] = Field(None, description="Expected shipment date (YYYY-MM-DD)")
     line_items: Optional[List[SalesOrderLineItem]] = Field(
         None, description="Line items for the sales order"
     )
     notes: Optional[str] = Field(None, description="Notes to be displayed on the sales order")
     terms: Optional[str] = Field(None, description="Terms and conditions")
-    
+
     # Optional fields
     contact_persons: Optional[List[str]] = Field(None, description="IDs of contact persons")
     currency_id: Optional[str] = Field(None, description="ID of the currency")
@@ -124,11 +124,11 @@ class UpdateSalesOrderInput(BaseModel):
     shipping_charge: Optional[float] = Field(None, ge=0, description="Shipping charge")
     adjustment: Optional[float] = Field(None, description="Adjustment amount")
     adjustment_description: Optional[str] = Field(None, description="Description for the adjustment")
-    
+
     # Address fields
     billing_address: Optional[Address] = Field(None, description="Billing address")
     shipping_address: Optional[Address] = Field(None, description="Shipping address")
-    
+
     # Other fields
     custom_fields: Optional[Dict[str, Any]] = Field(None, description="Custom field values")
     salesperson_id: Optional[str] = Field(None, description="ID of the salesperson")
@@ -161,10 +161,10 @@ class ListSalesOrdersInput(BaseModel):
         None, description="Filter by sales order status"
     )
     customer_id: Optional[str] = Field(None, description="Filter by customer ID")
-    date_range_start: Optional[Union[str, date]] = Field(
+    date_range_start: Optional[Union[str, DateType]] = Field(
         None, description="Filter by start date (YYYY-MM-DD)"
     )
-    date_range_end: Optional[Union[str, date]] = Field(
+    date_range_end: Optional[Union[str, DateType]] = Field(
         None, description="Filter by end date (YYYY-MM-DD)"
     )
     search_text: Optional[str] = Field(None, description="Search text")
@@ -183,7 +183,7 @@ class ConvertToInvoiceInput(BaseModel):
     invoice_number: Optional[str] = Field(
         None, description="Custom invoice number (required if ignore_auto_number_generation is True)"
     )
-    date: Optional[Union[str, date]] = Field(
+    date: Optional[Union[str, DateType]] = Field(
         None, description="Invoice date (YYYY-MM-DD, default: current date)"
     )
     payment_terms: Optional[int] = Field(None, description="Payment terms in days")
