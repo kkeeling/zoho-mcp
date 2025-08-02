@@ -115,6 +115,30 @@ For local development in Claude Desktop:
 - **Auth errors**: Regenerate refresh token with `uvx zoho-books-mcp --setup-oauth`
 - **Module errors**: Ensure virtual environment is activated
 
+## Development & Releases
+
+### Creating a Release
+
+To publish a new version to PyPI and create a GitHub release:
+
+1. **Update version** in `pyproject.toml`
+2. **Update CHANGELOG.md** with release notes
+3. **Create and push a git tag**:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+4. **Create GitHub Release** from the tag (triggers automatic PyPI publish)
+
+The GitHub Actions workflow will automatically:
+- Build the package
+- Publish to PyPI (via trusted publishing)
+- Attach distribution files to the GitHub release
+
+### Prerequisites for Publishing
+- PyPI account with trusted publishing configured
+- GitHub repository with PyPI environment protection enabled
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
