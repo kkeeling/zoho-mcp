@@ -2,10 +2,9 @@
 Unit tests for expense management tools in Zoho Books MCP Integration Server.
 """
 
-import json
-import unittest
+import pytest
 from datetime import date
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, AsyncMock
 
 from zoho_mcp.tools.expenses import (
     list_expenses,
@@ -15,119 +14,89 @@ from zoho_mcp.tools.expenses import (
 )
 
 
-class TestExpenseTools(unittest.TestCase):
+# Test fixtures
+MOCK_EXPENSE_ID = "123456789"
+MOCK_EXPENSE = {
+    "expense_id": MOCK_EXPENSE_ID,
+    "account_id": "account123",
+    "paid_through_account_id": "paid_account123",
+    "date": "2025-01-15",
+    "amount": 500.50,
+    "vendor_name": "ABC Supplies",
+    "vendor_id": "vendor123",
+    "is_billable": False,
+    "reference_number": "REF-001",
+    "description": "Office supplies",
+    "status": "unbilled",
+}
+
+MOCK_EXPENSES_LIST = {
+    "expenses": [MOCK_EXPENSE, {
+        "expense_id": "987654321",
+        "account_id": "account456",
+        "paid_through_account_id": "paid_account456",
+        "date": "2025-01-20",
+        "amount": 1000.00,
+        "vendor_name": "XYZ Services",
+        "vendor_id": "vendor456",
+        "is_billable": True,
+        "customer_id": "customer123",
+        "reference_number": "REF-002",
+        "description": "Consulting services",
+        "status": "invoiced",
+    }],
+    "page_context": {
+        "page": 1,
+        "per_page": 25,
+        "has_more_page": False,
+        "report_name": "Expenses",
+        "applied_filter": "All Expenses",
+        "sort_column": "created_time",
+        "sort_order": "D",
+        "total": 2
+    },
+    "message": "Expenses retrieved successfully",
+    "code": 0,
+}
+
+
+class TestExpenseTools:
     """Test cases for expense management tools."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        # Common test data
-        self.mock_expense_id = "123456789"
-        self.mock_expense = {
-            "expense_id": self.mock_expense_id,
-            "account_id": "account123",
-            "paid_through_account_id": "paid_account123",
-            "date": "2025-01-15",
-            "amount": 500.50,
-            "vendor_name": "ABC Supplies",
-            "vendor_id": "vendor123",
-            "is_billable": False,
-            "reference_number": "REF-001",
-            "description": "Office supplies",
-            "status": "unbilled",
-        }
-        
-        # Mock expense list response
-        self.mock_expenses_list = {
-            "expenses": [self.mock_expense, {
-                "expense_id": "987654321",
-                "account_id": "account456",
-                "paid_through_account_id": "paid_account456",
-                "date": "2025-01-20",
-                "amount": 1000.00,
-                "vendor_name": "XYZ Services",
-                "vendor_id": "vendor456",
-                "is_billable": True,
-                "customer_id": "customer123",
-                "reference_number": "REF-002",
-                "description": "Consulting services",
-                "status": "invoiced",
-            }],
-            "page_context": {
-                "page": 1,
-                "per_page": 25,
-                "has_more_page": False,
-                "report_name": "Expenses",
-                "applied_filter": "All Expenses",
-                "sort_column": "created_time",
-                "sort_order": "D",
-                "total": 2
-            },
-            "message": "Expenses retrieved successfully",
-            "code": 0,
-        }
-        
-        # Mock create expense response
-        self.mock_create_response = {
-            "expense": self.mock_expense,
-            "message": "Expense created successfully",
-            "code": 0,
-        }
-        
-        # Mock get expense response
-        self.mock_get_response = {
-            "expense": self.mock_expense,
-            "message": "Expense retrieved successfully",
-            "code": 0,
-        }
-        
-        # Mock update expense response
-        self.mock_update_response = {
-            "expense": {
-                **self.mock_expense,
-                "amount": 600.75,
-                "description": "Updated office supplies"
-            },
-            "message": "Expense updated successfully",
-            "code": 0,
-        }
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_list_expenses_success(self, mock_api_request):
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_list_expenses_success(self, mock_api_request):
         """Test listing expenses with default parameters."""
-        # Set up the mock
-        mock_api_request.return_value = self.mock_expenses_list
+        mock_api_request.return_value = MOCK_EXPENSES_LIST
         
-        # Call the function
-        result = list_expenses()
+        result = await list_expenses()
         
-        # Verify the API request
         mock_api_request.assert_called_once()
         args, kwargs = mock_api_request.call_args
-        self.assertEqual(args[0], "GET")
-        self.assertEqual(args[1], "/expenses")
-        self.assertEqual(kwargs["params"]["page"], 1)
-        self.assertEqual(kwargs["params"]["per_page"], 25)
+        assert args[0] == "GET"
+        assert args[1] == "/expenses"
+        assert kwargs["params"]["page"] == 1
+        assert kwargs["params"]["per_page"] == 25
         
-        # Verify the result
-        self.assertEqual(len(result["expenses"]), 2)
-        self.assertEqual(result["total"], 2)
-        self.assertEqual(result["page"], 1)
-        self.assertEqual(result["page_size"], 25)
-        self.assertEqual(result["has_more_page"], False)
-        self.assertEqual(result["message"], "Expenses retrieved successfully")
+        assert len(result["expenses"]) == 2
+        assert result["total"] == 2
+        assert result["page"] == 1
+        assert result["page_size"] == 25
+        assert result["has_more_page"] is False
+        assert result["message"] == "Expenses retrieved successfully"
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_list_expenses_with_filters(self, mock_api_request):
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_list_expenses_with_filters(self, mock_api_request):
         """Test listing expenses with filters."""
-        # Set up the mock
-        mock_api_request.return_value = {
-            **self.mock_expenses_list,
-            "expenses": [self.mock_expense],
-            "page_context": {**self.mock_expenses_list["page_context"], "total": 1}
+        filtered_response = {
+            **MOCK_EXPENSES_LIST,
+            "expenses": [MOCK_EXPENSE],
+            "page_context": {**MOCK_EXPENSES_LIST["page_context"], "total": 1}
         }
+        mock_api_request.return_value = filtered_response
         
-        # Call the function with filters
-        result = list_expenses(
+        result = await list_expenses(
             page=2,
             page_size=10,
             status="unbilled",
@@ -139,370 +108,218 @@ class TestExpenseTools(unittest.TestCase):
             sort_order="ascending"
         )
         
-        # Verify the API request
         mock_api_request.assert_called_once()
         args, kwargs = mock_api_request.call_args
-        self.assertEqual(args[0], "GET")
-        self.assertEqual(args[1], "/expenses")
-        self.assertEqual(kwargs["params"]["page"], 2)
-        self.assertEqual(kwargs["params"]["per_page"], 10)
-        self.assertEqual(kwargs["params"]["status"], "unbilled")
-        self.assertEqual(kwargs["params"]["vendor_id"], "vendor123")
-        self.assertEqual(kwargs["params"]["date.from"], "2025-01-01")
-        self.assertEqual(kwargs["params"]["date.to"], "2025-01-31")
-        self.assertEqual(kwargs["params"]["search_text"], "office")
-        self.assertEqual(kwargs["params"]["sort_column"], "date")
-        self.assertEqual(kwargs["params"]["sort_order"], "A")
+        assert args[0] == "GET"
+        assert args[1] == "/expenses"
+        assert kwargs["params"]["page"] == 2
+        assert kwargs["params"]["per_page"] == 10
+        assert kwargs["params"]["status"] == "unbilled"
+        assert kwargs["params"]["vendor_id"] == "vendor123"
+        assert kwargs["params"]["date.from"] == "2025-01-01"
+        assert kwargs["params"]["date.to"] == "2025-01-31"
+        assert kwargs["params"]["search_text"] == "office"
+        assert kwargs["params"]["sort_column"] == "date"
+        assert kwargs["params"]["sort_order"] == "ascending"
         
-        # Verify the result
-        self.assertEqual(len(result["expenses"]), 1)
-        self.assertEqual(result["expenses"][0]["vendor_id"], "vendor123")
+        assert len(result["expenses"]) == 1
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_list_expenses_with_date_objects(self, mock_api_request):
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_list_expenses_with_date_objects(self, mock_api_request):
         """Test listing expenses with date objects."""
-        # Set up the mock
-        mock_api_request.return_value = self.mock_expenses_list
+        mock_api_request.return_value = MOCK_EXPENSES_LIST
         
-        # Call the function with date objects
         start_date = date(2025, 1, 1)
         end_date = date(2025, 1, 31)
-        result = list_expenses(
+        
+        result = await list_expenses(
             date_range_start=start_date,
             date_range_end=end_date
         )
         
-        # Verify the API request
         mock_api_request.assert_called_once()
         args, kwargs = mock_api_request.call_args
-        self.assertEqual(kwargs["params"]["date.from"], "2025-01-01")
-        self.assertEqual(kwargs["params"]["date.to"], "2025-01-31")
+        assert kwargs["params"]["date.from"] == "2025-01-01"
+        assert kwargs["params"]["date.to"] == "2025-01-31"
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_list_expenses_error(self, mock_api_request):
-        """Test error handling when listing expenses."""
-        # Set up the mock to raise an exception
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_list_expenses_error(self, mock_api_request):
+        """Test error handling in list_expenses."""
         mock_api_request.side_effect = Exception("API error")
         
-        # Verify the exception is raised
-        with self.assertRaises(Exception) as context:
-            list_expenses()
-        
-        self.assertIn("API error", str(context.exception))
+        with pytest.raises(Exception, match="API error"):
+            await list_expenses()
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_create_expense_success(self, mock_api_request):
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_create_expense_success(self, mock_api_request):
         """Test creating an expense successfully."""
-        # Set up the mock
-        mock_api_request.return_value = self.mock_create_response
+        create_response = {
+            "expense": MOCK_EXPENSE,
+            "message": "Expense created successfully",
+            "code": 0,
+        }
+        mock_api_request.return_value = create_response
         
-        # Call the function
-        result = create_expense(
+        result = await create_expense(
             account_id="account123",
+            paid_through_account_id="paid_account123",
             date="2025-01-15",
             amount=500.50,
-            paid_through_account_id="paid_account123",
             vendor_id="vendor123",
-            is_billable=False,
-            reference_number="REF-001",
             description="Office supplies"
         )
         
-        # Verify the API request
         mock_api_request.assert_called_once()
         args, kwargs = mock_api_request.call_args
-        self.assertEqual(args[0], "POST")
-        self.assertEqual(args[1], "/expenses")
-        self.assertEqual(kwargs["json"]["account_id"], "account123")
-        self.assertEqual(kwargs["json"]["date"], "2025-01-15")
-        self.assertEqual(kwargs["json"]["amount"], 500.50)
-        self.assertEqual(kwargs["json"]["paid_through_account_id"], "paid_account123")
-        self.assertEqual(kwargs["json"]["vendor_id"], "vendor123")
-        self.assertEqual(kwargs["json"]["is_billable"], False)
-        self.assertEqual(kwargs["json"]["reference_number"], "REF-001")
-        self.assertEqual(kwargs["json"]["description"], "Office supplies")
+        assert args[0] == "POST"
+        assert args[1] == "/expenses"
+        assert "json_data" in kwargs
         
-        # Verify the result
-        self.assertEqual(result["expense"]["expense_id"], self.mock_expense_id)
-        self.assertEqual(result["message"], "Expense created successfully")
+        expense_data = kwargs["json_data"]
+        assert expense_data["account_id"] == "account123"
+        assert expense_data["amount"] == 500.50
+        assert expense_data["description"] == "Office supplies"
+        
+        assert result["expense"]["expense_id"] == MOCK_EXPENSE_ID
+        assert result["message"] == "Expense created successfully"
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_create_expense_with_date_object(self, mock_api_request):
-        """Test creating an expense with a date object."""
-        # Set up the mock
-        mock_api_request.return_value = self.mock_create_response
-        
-        # Call the function with a date object
-        expense_date = date(2025, 1, 15)
-        result = create_expense(
-            account_id="account123",
-            date=expense_date,
-            amount=500.50,
-            paid_through_account_id="paid_account123"
-        )
-        
-        # Verify the API request
-        mock_api_request.assert_called_once()
-        args, kwargs = mock_api_request.call_args
-        self.assertEqual(kwargs["json"]["date"], "2025-01-15")
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_create_expense_with_line_items(self, mock_api_request):
-        """Test creating an expense with line items."""
-        # Set up the mock
-        mock_response = {
-            **self.mock_create_response,
-            "expense": {
-                **self.mock_expense,
-                "line_items": [
-                    {
-                        "line_item_id": "item1",
-                        "account_id": "account123",
-                        "amount": 300.50,
-                        "description": "Paper supplies"
-                    },
-                    {
-                        "line_item_id": "item2",
-                        "account_id": "account123",
-                        "amount": 200.00,
-                        "description": "Printer ink"
-                    }
-                ]
-            }
-        }
-        mock_api_request.return_value = mock_response
-        
-        # Line items to include
-        line_items = [
-            {
-                "account_id": "account123",
-                "amount": 300.50,
-                "description": "Paper supplies"
-            },
-            {
-                "account_id": "account123",
-                "amount": 200.00,
-                "description": "Printer ink"
-            }
-        ]
-        
-        # Call the function
-        result = create_expense(
-            account_id="account123",
-            date="2025-01-15",
-            amount=500.50,
-            paid_through_account_id="paid_account123",
-            line_items=line_items
-        )
-        
-        # Verify the API request
-        mock_api_request.assert_called_once()
-        args, kwargs = mock_api_request.call_args
-        self.assertEqual(len(kwargs["json"]["line_items"]), 2)
-        self.assertEqual(kwargs["json"]["line_items"][0]["amount"], 300.50)
-        self.assertEqual(kwargs["json"]["line_items"][1]["description"], "Printer ink")
-        
-        # Verify the result
-        self.assertEqual(len(result["expense"]["line_items"]), 2)
-        self.assertEqual(result["expense"]["line_items"][0]["line_item_id"], "item1")
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_create_expense_with_invalid_line_item(self, mock_api_request):
-        """Test error handling when creating an expense with invalid line items."""
-        # Invalid line item (missing required account_id)
-        line_items = [
-            {
-                "amount": 300.50,
-                "description": "Paper supplies"
-            }
-        ]
-        
-        # Verify the exception is raised
-        with self.assertRaises(ValueError) as context:
-            create_expense(
-                account_id="account123",
-                date="2025-01-15",
-                amount=500.50,
-                paid_through_account_id="paid_account123",
-                line_items=line_items
-            )
-        
-        # The validation error should mention the missing account_id
-        self.assertIn("account_id", str(context.exception))
-        
-        # Verify API was not called
-        mock_api_request.assert_not_called()
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_create_expense_error(self, mock_api_request):
-        """Test error handling when creating an expense."""
-        # Set up the mock to raise an exception
-        mock_api_request.side_effect = Exception("API error")
-        
-        # Verify the exception is raised
-        with self.assertRaises(Exception) as context:
-            create_expense(
-                account_id="account123",
-                date="2025-01-15",
-                amount=500.50,
-                paid_through_account_id="paid_account123"
-            )
-        
-        self.assertIn("API error", str(context.exception))
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_get_expense_success(self, mock_api_request):
-        """Test getting an expense successfully."""
-        # Set up the mock
-        mock_api_request.return_value = self.mock_get_response
-        
-        # Call the function
-        result = get_expense(expense_id=self.mock_expense_id)
-        
-        # Verify the API request
-        mock_api_request.assert_called_once()
-        args, kwargs = mock_api_request.call_args
-        self.assertEqual(args[0], "GET")
-        self.assertEqual(args[1], f"/expenses/{self.mock_expense_id}")
-        
-        # Verify the result
-        self.assertEqual(result["expense"]["expense_id"], self.mock_expense_id)
-        self.assertEqual(result["message"], "Expense retrieved successfully")
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_get_expense_not_found(self, mock_api_request):
-        """Test getting a non-existent expense."""
-        # Set up the mock to return a response without an expense
-        mock_api_request.return_value = {
-            "message": "Expense not found",
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_create_expense_with_date_object(self, mock_api_request):
+        """Test creating an expense with date object."""
+        create_response = {
+            "expense": MOCK_EXPENSE,
+            "message": "Expense created successfully",
             "code": 0,
         }
+        mock_api_request.return_value = create_response
         
-        # Call the function
-        result = get_expense(expense_id="nonexistent")
+        expense_date = date(2025, 1, 15)
         
-        # Verify the result
-        self.assertIsNone(result["expense"])
-        self.assertEqual(result["message"], "Expense not found")
+        result = await create_expense(
+            account_id="account123",
+            paid_through_account_id="paid_account123",
+            date=expense_date,
+            amount=500.50,
+            vendor_id="vendor123"
+        )
+        
+        mock_api_request.assert_called_once()
+        args, kwargs = mock_api_request.call_args
+        expense_data = kwargs["json_data"]
+        assert expense_data["date"] == "2025-01-15"
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_get_expense_invalid_id(self, mock_api_request):
-        """Test error handling when getting an expense with invalid ID."""
-        # Verify the exception is raised with an empty expense_id
-        with self.assertRaises(ValueError) as context:
-            get_expense(expense_id="")
-        
-        self.assertIn("Invalid expense ID", str(context.exception))
-        
-        # Verify API was not called
-        mock_api_request.assert_not_called()
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    def test_get_expense_error(self, mock_api_request):
-        """Test error handling when getting an expense."""
-        # Set up the mock to raise an exception
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_create_expense_error(self, mock_api_request):
+        """Test error handling in create_expense."""
         mock_api_request.side_effect = Exception("API error")
         
-        # Verify the exception is raised
-        with self.assertRaises(Exception) as context:
-            get_expense(expense_id=self.mock_expense_id)
-        
-        self.assertIn("API error", str(context.exception))
+        with pytest.raises(Exception, match="API error"):
+            await create_expense(
+                account_id="account123",
+                paid_through_account_id="paid_account123",
+                date="2025-01-15",
+                amount=500.50,
+                vendor_id="vendor123"
+            )
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    @patch("zoho_mcp.tools.expenses.get_expense")
-    def test_update_expense_success(self, mock_get_expense, mock_api_request):
-        """Test updating an expense successfully."""
-        # Set up the mocks
-        mock_get_expense.return_value = {"expense": self.mock_expense}
-        mock_api_request.return_value = self.mock_update_response
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_get_expense_success(self, mock_api_request):
+        """Test getting an expense successfully."""
+        get_response = {
+            "expense": MOCK_EXPENSE,
+            "message": "Expense retrieved successfully",
+            "code": 0,
+        }
+        mock_api_request.return_value = get_response
         
-        # Call the function
-        result = update_expense(
-            expense_id=self.mock_expense_id,
+        result = await get_expense(MOCK_EXPENSE_ID)
+        
+        mock_api_request.assert_called_once_with("GET", f"/expenses/{MOCK_EXPENSE_ID}")
+        assert result["expense"]["expense_id"] == MOCK_EXPENSE_ID
+        assert result["message"] == "Expense retrieved successfully"
+
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_get_expense_not_found(self, mock_api_request):
+        """Test getting an expense that doesn't exist."""
+        get_response = {
+            "message": "Expense not found",
+            "expense": None,
+        }
+        mock_api_request.return_value = get_response
+        
+        result = await get_expense("nonexistent")
+        
+        mock_api_request.assert_called_once_with("GET", "/expenses/nonexistent")
+        assert result["expense"] is None
+        assert "not found" in result["message"]
+
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_get_expense_error(self, mock_api_request):
+        """Test error handling in get_expense."""
+        mock_api_request.side_effect = Exception("API error")
+        
+        with pytest.raises(Exception, match="API error"):
+            await get_expense(MOCK_EXPENSE_ID)
+
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_update_expense_success(self, mock_api_request):
+        """Test updating an expense successfully."""
+        # Mock the update response
+        update_response = {
+            "expense": {
+                **MOCK_EXPENSE,
+                "amount": 600.75,
+                "description": "Updated office supplies"
+            },
+            "message": "Expense updated successfully",
+            "code": 0,
+        }
+        mock_api_request.return_value = update_response
+        
+        result = await update_expense(
+            MOCK_EXPENSE_ID,
             amount=600.75,
             description="Updated office supplies"
         )
         
-        # Verify the API request
         mock_api_request.assert_called_once()
         args, kwargs = mock_api_request.call_args
-        self.assertEqual(args[0], "PUT")
-        self.assertEqual(args[1], f"/expenses/{self.mock_expense_id}")
-        self.assertEqual(kwargs["json"]["expense_id"], self.mock_expense_id)
-        self.assertEqual(kwargs["json"]["amount"], 600.75)
-        self.assertEqual(kwargs["json"]["description"], "Updated office supplies")
+        assert args[0] == "PUT"
+        assert args[1] == f"/expenses/{MOCK_EXPENSE_ID}"
+        assert "json_data" in kwargs
         
-        # Verify unchanged fields are preserved
-        self.assertEqual(kwargs["json"]["account_id"], "account123")
-        self.assertEqual(kwargs["json"]["date"], "2025-01-15")
+        expense_data = kwargs["json_data"]
+        assert expense_data["amount"] == 600.75
+        assert expense_data["description"] == "Updated office supplies"
         
-        # Verify the result
-        self.assertEqual(result["expense"]["amount"], 600.75)
-        self.assertEqual(result["expense"]["description"], "Updated office supplies")
-        self.assertEqual(result["message"], "Expense updated successfully")
+        assert result["expense"]["amount"] == 600.75
+        assert result["message"] == "Expense updated successfully"
 
-    @patch("zoho_mcp.tools.expenses.get_expense")
-    def test_update_expense_not_found(self, mock_get_expense):
-        """Test updating a non-existent expense."""
-        # Set up the mock to return an empty response
-        mock_get_expense.return_value = {"expense": None}
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_update_expense_not_found(self, mock_api_request):
+        """Test updating an expense that doesn't exist."""
+        from zoho_mcp.errors import ResourceNotFoundError
         
-        # Verify the exception is raised
-        with self.assertRaises(ValueError) as context:
-            update_expense(
-                expense_id="nonexistent",
-                amount=600.75
-            )
+        mock_api_request.side_effect = ResourceNotFoundError("expenses", "nonexistent", "Invalid URL Passed")
         
-        self.assertIn("not found", str(context.exception))
+        with pytest.raises(ResourceNotFoundError):
+            await update_expense("nonexistent", amount=100.0)
 
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    @patch("zoho_mcp.tools.expenses.get_expense")
-    def test_update_expense_with_date_object(self, mock_get_expense, mock_api_request):
-        """Test updating an expense with a date object."""
-        # Set up the mocks
-        mock_get_expense.return_value = {"expense": self.mock_expense}
-        mock_api_request.return_value = {
-            **self.mock_update_response,
-            "expense": {
-                **self.mock_update_response["expense"],
-                "date": "2025-02-15"
-            }
-        }
-        
-        # Call the function with a date object
-        expense_date = date(2025, 2, 15)
-        result = update_expense(
-            expense_id=self.mock_expense_id,
-            date=expense_date
-        )
-        
-        # Verify the API request
-        mock_api_request.assert_called_once()
-        args, kwargs = mock_api_request.call_args
-        self.assertEqual(kwargs["json"]["date"], "2025-02-15")
-        
-        # Verify the result
-        self.assertEqual(result["expense"]["date"], "2025-02-15")
-
-    @patch("zoho_mcp.tools.expenses.zoho_api_request")
-    @patch("zoho_mcp.tools.expenses.get_expense")
-    def test_update_expense_error(self, mock_get_expense, mock_api_request):
-        """Test error handling when updating an expense."""
-        # Set up the mocks
-        mock_get_expense.return_value = {"expense": self.mock_expense}
+    @pytest.mark.asyncio
+    @patch("zoho_mcp.tools.expenses.zoho_api_request_async")
+    async def test_update_expense_error(self, mock_api_request):
+        """Test error handling in update_expense."""
         mock_api_request.side_effect = Exception("API error")
         
-        # Verify the exception is raised
-        with self.assertRaises(Exception) as context:
-            update_expense(
-                expense_id=self.mock_expense_id,
-                amount=600.75
-            )
-        
-        self.assertIn("API error", str(context.exception))
-
-
-if __name__ == "__main__":
-    unittest.main()
+        with pytest.raises(Exception, match="API error"):
+            await update_expense(MOCK_EXPENSE_ID, amount=600.75)

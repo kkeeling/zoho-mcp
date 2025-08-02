@@ -163,10 +163,9 @@ class TestBulkInvoiceOperations:
             
             await bulk_create_invoices(invoices_data, callback=progress_callback)
             
-            # Verify callback was called for each item
-            assert len(callback_calls) == 2
-            assert callback_calls[0] == (1, 2)
-            assert callback_calls[1] == (2, 2)
+            # Verify callback was called at completion (notify_interval=10 default, so only at end)
+            assert len(callback_calls) == 1
+            assert callback_calls[0] == (2, 2)
 
 
 class TestBulkExpenseOperations:
@@ -335,8 +334,6 @@ class TestBatchProcessing:
             callback=progress_callback,
         )
         
-        # Should have been called for each batch
-        assert len(callback_calls) == 3
-        assert callback_calls[0] == (1, 3)  # First batch
-        assert callback_calls[1] == (2, 3)  # Second batch
-        assert callback_calls[2] == (3, 3)  # Third batch
+        # Should have been called at completion (notify_interval=10 default, so only at end)
+        assert len(callback_calls) == 1
+        assert callback_calls[0] == (3, 3)  # Final completion

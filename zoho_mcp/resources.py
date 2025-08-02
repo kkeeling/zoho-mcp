@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
 from zoho_mcp.tools.api import zoho_api_request_async
-from zoho_mcp.tools import list_invoices
+from zoho_mcp.tools import list_invoices, list_contacts, get_contact, list_expenses, list_items
 
 logger = logging.getLogger(__name__)
 
