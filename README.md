@@ -128,16 +128,12 @@ To publish a new version to PyPI and create a GitHub release:
    git tag v0.1.0
    git push origin v0.1.0
    ```
-4. **Create GitHub Release** from the tag (triggers automatic PyPI publish)
-
-The GitHub Actions workflow will automatically:
-- Build the package
-- Publish to PyPI (via trusted publishing)
-- Attach distribution files to the GitHub release
+4. **Follow manual publishing steps** in `PUBLISHING.md` to build, upload to PyPI, and create GitHub release
 
 ### Prerequisites for Publishing
-- PyPI account with trusted publishing configured
-- GitHub repository with PyPI environment protection enabled
+- PyPI account with API token
+- GitHub CLI (`gh`) installed and authenticated
+- Build tools: `pip install --upgrade pip build twine`
 
 ## License
 
