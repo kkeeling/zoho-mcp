@@ -121,7 +121,7 @@ class TestContactTools:
         """Test listing contacts with pagination parameters."""
         mock_zoho_api.return_value = MOCK_CONTACTS_LIST
         
-        result = await list_contacts(page=2, page_size=10)
+        await list_contacts(page=2, page_size=10)
         
         mock_zoho_api.assert_called_once()
         call_kwargs = mock_zoho_api.call_args[1]
