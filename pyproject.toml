@@ -53,6 +53,7 @@ zoho-books-mcp = "zoho_mcp:main"
 Repository = "https://github.com/kkeeling/zoho-mcp"
 Issues = "https://github.com/kkeeling/zoho-mcp/issues"
 Documentation = "https://github.com/kkeeling/zoho-mcp#readme"
+Changelog = "https://github.com/kkeeling/zoho-mcp/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["zoho_mcp"]
