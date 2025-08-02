@@ -112,7 +112,6 @@ def configure_server(args: argparse.Namespace) -> Dict[str, Any]:
     # Prepare server configuration
     server_config = {
         "name": "zoho-books",
-        "version": "1.0.0",
     }
 
     return server_config
