@@ -4,7 +4,7 @@ Unit tests for the invoice management tools.
 
 import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from zoho_mcp.tools.invoices import (
     list_invoices,
@@ -16,9 +16,10 @@ from zoho_mcp.tools.invoices import (
 )
 
 
-def test_list_invoices_default_params():
+@pytest.mark.asyncio
+async def test_list_invoices_default_params():
     """Test list_invoices with default parameters."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "invoices": [
@@ -31,7 +32,7 @@ def test_list_invoices_default_params():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = list_invoices()
+        result = await list_invoices()
         
         # Check the API was called with correct parameters
         mock_request.assert_called_once_with(
@@ -41,7 +42,7 @@ def test_list_invoices_default_params():
                 "page": 1,
                 "per_page": 25,
                 "sort_column": "created_time",
-                "sort_order": "D",
+                "sort_order": "descending",
             }
         )
         
@@ -53,9 +54,10 @@ def test_list_invoices_default_params():
         assert result["message"] == "2 invoices found"
 
 
-def test_list_invoices_with_filters():
+@pytest.mark.asyncio
+async def test_list_invoices_with_filters():
     """Test list_invoices with filters."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "invoices": [
@@ -67,7 +69,7 @@ def test_list_invoices_with_filters():
         mock_request.return_value = mock_response
         
         # Call the function with filters
-        result = list_invoices(
+        result = await list_invoices(
             page=1,
             page_size=10,
             status="draft",
@@ -92,7 +94,7 @@ def test_list_invoices_with_filters():
                 "date_end": "2023-12-31",
                 "search_text": "Test",
                 "sort_column": "date",
-                "sort_order": "A",
+                "sort_order": "ascending",
             }
         )
         
@@ -103,9 +105,10 @@ def test_list_invoices_with_filters():
         assert result["message"] == "1 invoice found"
 
 
-def test_create_invoice_success():
+@pytest.mark.asyncio
+async def test_create_invoice_success():
     """Test create_invoice success case."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "invoice": {
@@ -138,7 +141,7 @@ def test_create_invoice_success():
         }
         
         # Call the function
-        result = create_invoice(**invoice_data)
+        result = await create_invoice(**invoice_data)
         
         # Check the API was called with correct parameters
         # Note: We don't check the exact json argument because the Pydantic model adds defaults
@@ -146,10 +149,10 @@ def test_create_invoice_success():
         call_args = mock_request.call_args
         assert call_args[0][0] == "POST"
         assert call_args[0][1] == "/invoices"
-        assert "json" in call_args[1]
+        assert "json_data" in call_args[1]
         
         # Check that all our original data is in the request
-        sent_data = call_args[1]["json"]
+        sent_data = call_args[1]["json_data"]
         assert sent_data["customer_id"] == "CUST-123"
         assert sent_data["invoice_date"] == "2023-01-15"
         assert sent_data["due_date"] == "2023-02-15"
@@ -167,7 +170,8 @@ def test_create_invoice_success():
         assert result["message"] == "Invoice created successfully"
 
 
-def test_create_invoice_validation_error():
+@pytest.mark.asyncio
+async def test_create_invoice_validation_error():
     """Test create_invoice validation error case."""
     # Invoice data with missing required field (customer_id)
     invoice_data = {
@@ -183,10 +187,11 @@ def test_create_invoice_validation_error():
     
     # Check that validation error is raised
     with pytest.raises(ValueError):
-        create_invoice(**invoice_data)
+        await create_invoice(**invoice_data)
 
 
-def test_create_invoice_line_item_validation_error():
+@pytest.mark.asyncio
+async def test_create_invoice_line_item_validation_error():
     """Test create_invoice line item validation error case."""
     # Invoice data with invalid line item (negative rate)
     invoice_data = {
@@ -202,12 +207,13 @@ def test_create_invoice_line_item_validation_error():
     
     # Check that validation error is raised
     with pytest.raises(ValueError):
-        create_invoice(**invoice_data)
+        await create_invoice(**invoice_data)
 
 
-def test_get_invoice_success():
+@pytest.mark.asyncio
+async def test_get_invoice_success():
     """Test get_invoice success case."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "invoice": {
@@ -232,7 +238,7 @@ def test_get_invoice_success():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = get_invoice("INV-123")
+        result = await get_invoice("INV-123")
         
         # Check the API was called with correct parameters
         mock_request.assert_called_once_with("GET", "/invoices/INV-123")
@@ -244,9 +250,10 @@ def test_get_invoice_success():
         assert result["message"] == "Invoice details fetched successfully"
 
 
-def test_get_invoice_not_found():
+@pytest.mark.asyncio
+async def test_get_invoice_not_found():
     """Test get_invoice when invoice is not found."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API for not found case
         mock_response = {
             "message": "Invoice not found",
@@ -255,7 +262,7 @@ def test_get_invoice_not_found():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = get_invoice("INV-999")
+        result = await get_invoice("INV-999")
         
         # Check the API was called with correct parameters
         mock_request.assert_called_once_with("GET", "/invoices/INV-999")
@@ -265,9 +272,10 @@ def test_get_invoice_not_found():
         assert result["message"] == "Invoice not found"
 
 
-def test_email_invoice_success():
+@pytest.mark.asyncio
+async def test_email_invoice_success():
     """Test email_invoice success case."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "message": "Invoice has been emailed successfully",
@@ -275,7 +283,7 @@ def test_email_invoice_success():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = email_invoice(
+        result = await email_invoice(
             invoice_id="INV-123",
             to_email=["customer@example.com"],
             subject="Your Invoice",
@@ -287,7 +295,7 @@ def test_email_invoice_success():
         mock_request.assert_called_once_with(
             "POST",
             "/invoices/INV-123/email",
-            json={
+            json_data={
                 "to_mail": ["customer@example.com"],
                 "subject": "Your Invoice",
                 "body": "Please find your invoice attached",
@@ -303,9 +311,10 @@ def test_email_invoice_success():
         assert result["invoice_id"] == "INV-123"
 
 
-def test_mark_invoice_as_sent_success():
+@pytest.mark.asyncio
+async def test_mark_invoice_as_sent_success():
     """Test mark_invoice_as_sent success case."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "message": "Invoice marked as sent",
@@ -313,7 +322,7 @@ def test_mark_invoice_as_sent_success():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = mark_invoice_as_sent("INV-123")
+        result = await mark_invoice_as_sent("INV-123")
         
         # Check the API was called with correct parameters
         mock_request.assert_called_once_with("POST", "/invoices/INV-123/status/sent")
@@ -324,9 +333,10 @@ def test_mark_invoice_as_sent_success():
         assert result["invoice_id"] == "INV-123"
 
 
-def test_void_invoice_success():
+@pytest.mark.asyncio
+async def test_void_invoice_success():
     """Test void_invoice success case."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock response from the API
         mock_response = {
             "message": "Invoice has been voided successfully",
@@ -334,7 +344,7 @@ def test_void_invoice_success():
         mock_request.return_value = mock_response
         
         # Call the function
-        result = void_invoice("INV-123")
+        result = await void_invoice("INV-123")
         
         # Check the API was called with correct parameters
         mock_request.assert_called_once_with("POST", "/invoices/INV-123/status/void")
@@ -345,18 +355,19 @@ def test_void_invoice_success():
         assert result["invoice_id"] == "INV-123"
 
 
-def test_invoice_api_error_handling():
+@pytest.mark.asyncio
+async def test_invoice_api_error_handling():
     """Test error handling in invoice tools."""
-    with patch("zoho_mcp.tools.invoices.zoho_api_request") as mock_request:
+    with patch("zoho_mcp.tools.invoices.zoho_api_request_async") as mock_request:
         # Mock API error
         mock_request.side_effect = Exception("API error occurred")
         
         # Check that the error is propagated
         with pytest.raises(Exception, match="API error occurred"):
-            list_invoices()
+            await list_invoices()
             
         with pytest.raises(Exception, match="API error occurred"):
-            get_invoice("INV-123")
+            await get_invoice("INV-123")
             
         with pytest.raises(Exception, match="API error occurred"):
-            void_invoice("INV-123")
+            await void_invoice("INV-123")

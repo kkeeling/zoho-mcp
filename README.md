@@ -105,6 +105,15 @@ For local development in Claude Desktop:
 - **monthly_invoicing** - Bulk invoice creation
 - **expense_tracking_workflow** - Expense recording and categorization
 
+## Client Integration
+
+The Zoho MCP server can be integrated with various AI clients and development tools:
+
+- [Claude Desktop Integration](docs/client-integration/claude-desktop.md) - Setup guide for Claude Desktop
+- [Cursor IDE Integration](docs/client-integration/cursor.md) - Setup guide for Cursor IDE
+- [Common Operations Examples](docs/examples/common-operations.md) - Example usage patterns
+- [Troubleshooting Guide](docs/troubleshooting.md) - Solutions to common issues
+
 ## Configuration
 
 ### Regions

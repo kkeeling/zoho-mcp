@@ -106,17 +106,25 @@ class TestOAuthFlow:
     
     def test_update_env_file_create(self, temp_env_file):
         """Test creating/updating .env file with refresh token."""
-        with mock.patch('zoho_mcp.auth_flow.Path') as mock_path:
-            mock_path.return_value.parent.parent.__truediv__.return_value.__truediv__.return_value = temp_env_file
+        # Use real temp directory approach - patch the home path resolution
+        with mock.patch('pathlib.Path.home') as mock_home:
+            # Set up temp directory structure
+            temp_dir = temp_env_file.parent
+            config_dir = temp_dir / ".zoho-mcp"
+            config_dir.mkdir(exist_ok=True)
+            
+            mock_home.return_value = temp_dir
             
             # Update with new refresh token
             update_env_file("test_refresh_token")
             
-            # Check that file was updated
-            with open(temp_env_file, "r") as f:
+            # Check that file was created in the expected location
+            env_file = config_dir / ".env"
+            assert env_file.exists()
+            
+            with open(env_file, "r") as f:
                 content = f.read()
                 assert "ZOHO_REFRESH_TOKEN=test_refresh_token" in content
-                assert "ZOHO_CLIENT_ID=test_client_id" in content
     
     @mock.patch('zoho_mcp.auth_flow.httpx.post')
     def test_exchange_code_for_token_success(self, mock_post, mock_settings):
