@@ -4,28 +4,6 @@ This document outlines the complete process for publishing zoho-books-mcp to PyP
 
 ## Prerequisites
 
-### 1. PyPI Trusted Publishing Setup
-
-Before releases can be automated, you must configure PyPI Trusted Publishing:
-
-1. **Create PyPI account** if you don't have one: https://pypi.org/account/register/
-2. **Navigate to Publishing** section in your PyPI account settings
-3. **Add a new trusted publisher** with these details:
-   - PyPI project name: `zoho-books-mcp`
-   - Owner: `kkeeling`
-   - Repository name: `zoho-mcp`
-   - Workflow filename: `publish.yml`
-   - Environment name: `pypi`
-
-### 2. GitHub Environment Protection
-
-1. **Go to repository Settings** → Environments
-2. **Create new environment** named `pypi`
-3. **Add protection rules**:
-   - ✅ Required reviewers (recommended: repository maintainers)
-   - ✅ Wait timer: 0 minutes
-   - ✅ Deployment branches: Selected branches → Only default branch
-
 ## Release Steps
 
 ### 1. Prepare the Release
@@ -64,13 +42,13 @@ git push origin v0.1.0
 5. **Description**: Copy content from CHANGELOG.md for this version
 6. **Click "Publish release"**
 
-### 4. Automated Publishing
+### 4. Manual Publishing
 
-Once the GitHub release is published, the workflow will automatically:
+After creating the GitHub release, follow the manual publishing steps in PUBLISHING.md:
 
 1. ✅ Build source distribution (sdist) and wheel
-2. ✅ Publish to PyPI using trusted publishing
-3. ✅ Attach distribution files to GitHub release
+2. ✅ Publish to PyPI using API token
+3. ✅ Verify publication on PyPI
 
 ## Verification
 
@@ -86,16 +64,10 @@ Once the GitHub release is published, the workflow will automatically:
 
 ## Troubleshooting
 
-### PyPI Trusted Publishing Issues
-- **Error: "Trusted publishing exchange failure"**
-  - Verify PyPI project name matches exactly: `zoho-books-mcp`
-  - Check environment name is exactly: `pypi`
-  - Ensure workflow filename is: `publish.yml`
-
-### GitHub Actions Failures
-- **Environment protection**: Approve the deployment in GitHub Actions
+### Build and Publishing Failures
 - **Build failures**: Check dependencies and build configuration
-- **Permission errors**: Verify repository secrets and permissions
+- **PyPI upload errors**: Verify API token and network connectivity
+- **Permission errors**: Verify PyPI account permissions for the project
 
 ### Version Conflicts
 - **Version already exists**: Update version number in pyproject.toml
@@ -107,9 +79,9 @@ Once the GitHub release is published, the workflow will automatically:
   git push origin v0.1.0
   ```
 
-## Manual Override (Emergency)
+## Manual Publishing Process
 
-If automated publishing fails, you can publish manually:
+For detailed manual publishing instructions, see PUBLISHING.md:
 
 ```bash
 # Build the package
