@@ -5,7 +5,7 @@ This module contains tests for the Zoho Books sales order management tools.
 """
 
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 from datetime import date
 
 from zoho_mcp.tools.sales import (
